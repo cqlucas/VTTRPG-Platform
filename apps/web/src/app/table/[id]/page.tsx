@@ -115,13 +115,13 @@ export default function TablePage() {
               
               {msg.type === 'system' && (
                 <div className="text-secondary text-[12px] px-1 font-telemetry">
-                  > {msg.text}
+                  &gt; {msg.text}
                 </div>
               )}
 
               {msg.type === 'system-alert' && (
                 <div className="text-danger text-[12px] px-1 font-telemetry glow-danger">
-                  > [ALERT] {msg.text}
+                  &gt; [ALERT] {msg.text}
                 </div>
               )}
 
