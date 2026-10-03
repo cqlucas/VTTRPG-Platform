@@ -1,52 +1,103 @@
 @import "tailwindcss";
 
-/* ──────────────────────────────────────────────
-   QuestDreamer — Design Tokens
-   ────────────────────────────────────────────── */
-
 @theme {
-  /* Primary palette — Deep purple/violet fantasy theme */
-  --color-primary-50: #f5f3ff;
-  --color-primary-100: #ede9fe;
-  --color-primary-200: #ddd6fe;
-  --color-primary-300: #c4b5fd;
-  --color-primary-400: #a78bfa;
-  --color-primary-500: #8b5cf6;
-  --color-primary-600: #7c3aed;
-  --color-primary-700: #6d28d9;
-  --color-primary-800: #5b21b6;
-  --color-primary-900: #4c1d95;
-  --color-primary-950: #2e1065;
+  --color-background: #0b0f17;
+  --color-surface-base: #0f131c;
+  --color-surface-dim: #0e131f;
+  --color-surface-bright: #353942;
+  --color-surface-container: #1c2028;
+  --color-surface-container-high: #262a33;
+  --color-surface-panel: #111827;
+  --color-surface-floating: #1e293b;
+  --color-surface-modal: #0f172a;
+  
+  --color-primary: #f59e0b;
+  --color-primary-dim: #b45309;
+  --color-secondary: #06b6d4;
+  --color-tertiary: #3b82f6;
 
-  /* Accent — Warm amber/gold for highlights */
-  --color-accent-400: #fbbf24;
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-psionic: #a855f7;
 
-  /* Surface colors — Dark mode first */
-  --color-surface-900: #0c0a1a;
-  --color-surface-800: #13102b;
-  --color-surface-700: #1e1a3a;
-  --color-surface-600: #2a2550;
+  --color-text-base: #dfe2ee;
+  --color-text-muted: #94a3b8;
+  
+  --color-border-subtle: rgba(148, 163, 184, 0.12);
+  --color-border-accent: rgba(245, 158, 11, 0.35);
 
-  /* Font families */
-  --font-heading: "Outfit", sans-serif;
-  --font-body: "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
-/* ──────────────────────────────────────────────
-   Base styles
-   ────────────────────────────────────────────── */
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-base);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-body {
-  font-family: var(--font-body);
-  background-color: var(--color-surface-900);
-  color: #e2e8f0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading);
+@layer utilities {
+  .layer-1-well {
+    background-color: var(--color-surface-dim);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .layer-2-dock {
+    background-color: rgba(17, 24, 39, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--color-border-subtle);
+  }
+
+  .layer-3-floating {
+    background-color: rgba(30, 41, 59, 0.82);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+  }
+
+  .layer-4-modal {
+    background-color: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+  }
+
+  /* Arcane Glow Directives */
+  .glow-primary {
+    box-shadow: 0 0 16px -2px rgba(245, 158, 11, 0.35);
+  }
+  .glow-primary-hover:hover {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+  }
+  .glow-webrtc {
+    box-shadow: 0 0 12px -2px rgba(6, 182, 212, 0.45);
+  }
+  .glow-danger {
+    box-shadow: 0 0 14px -2px rgba(239, 68, 68, 0.4);
+  }
+
+  /* Typography / Telemetry */
+  .font-telemetry {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .label-caps {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
 }

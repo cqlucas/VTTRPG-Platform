@@ -10,22 +10,26 @@
     "clean": "rimraf .next"
   },
   "dependencies": {
+    "@questdreamer/types": "workspace:*",
+    "@questdreamer/ui": "workspace:*",
+    "@questdreamer/webrtc": "workspace:*",
+    "clsx": "^2.1.1",
+    "framer-motion": "^13.5.0",
+    "lucide-react": "^1.49.0",
     "next": "^15.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "socket.io-client": "^4.8.0",
-    "@questdreamer/types": "workspace:*",
-    "@questdreamer/ui": "workspace:*",
-    "@questdreamer/webrtc": "workspace:*"
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.7.0",
+    "postcss": "^8.5.0",
     "rimraf": "^6.0.0",
     "tailwindcss": "^4.0.0",
-    "@tailwindcss/postcss": "^4.0.0",
-    "postcss": "^8.5.0"
+    "typescript": "^5.7.0"
   }
 }

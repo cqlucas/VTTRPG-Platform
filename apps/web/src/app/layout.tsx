@@ -1,34 +1,26 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono, Geist } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  variable: "--font-outfit",
-  display: "swap",
-});
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk" });
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono" });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
 export const metadata: Metadata = {
-  title: "QuestDreamer — Virtual Tabletop RPG Platform",
-  description:
-    "A hybrid P2P-powered virtual tabletop for TTRPGs. Create campaigns, build worlds, and play together in real-time.",
-  keywords: ["TTRPG", "Virtual Tabletop", "VTT", "RPG", "D&D", "Pathfinder", "WebRTC"],
+  title: "Arcane Telemetry VTT",
+  description: "Hybrid Local-First Virtual Tabletop RPG Platform",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="en" className={`${inter.variable} ${outfit.variable} dark`}>
-      <body>{children}</body>
+    <html lang="en" className="dark">
+      <body className={`${geist.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} font-sans antialiased bg-background text-text-base h-screen overflow-hidden`}>
+        {children}
+      </body>
     </html>
   );
 }
