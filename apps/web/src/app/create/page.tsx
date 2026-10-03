@@ -2,12 +2,34 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Database, Globe, Hash } from "lucide-react";
+import { fetchApi } from "@/lib/api";
 
 export default function CreateTablePage() {
   const [name, setName] = useState("");
   const [system, setSystem] = useState("generic");
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+
+  const handleCreate = async () => {
+    if (!name.trim()) return;
+    
+    setIsLoading(true);
+    try {
+      const result = await fetchApi("/campaigns", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      // Redirect to the newly created table
+      router.push(`/table/${result.id}`);
+    } catch (err) {
+      alert("Failed to create campaign: " + (err as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex h-full w-full bg-background items-center justify-center p-6 relative">
@@ -69,8 +91,12 @@ export default function CreateTablePage() {
               Abort
             </button>
           </Link>
-          <button className="bg-primary text-background px-6 py-2.5 rounded text-[13px] font-bold transition-all glow-primary-hover">
-            Execute Initialization
+          <button 
+            onClick={handleCreate}
+            disabled={isLoading || !name.trim()}
+            className="bg-primary text-background px-6 py-2.5 rounded text-[13px] font-bold transition-all glow-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? "EXECUTING..." : "Execute Initialization"}
           </button>
         </div>
       </motion.div>
