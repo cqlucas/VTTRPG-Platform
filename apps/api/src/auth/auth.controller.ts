@@ -19,4 +19,10 @@ export class AuthController {
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
+
+  @Post("dev-login")
+  @HttpCode(HttpStatus.OK)
+  async devLogin(@Body() dto: { email: string }) {
+    return this.authService.devLogin(dto.email);
+  }
 }

@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/AuthContext";
 
 export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false);
+  const [isDevBypassMode, setIsDevBypassMode] = useState(false);
+  
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -20,6 +22,15 @@ export default function LoginPage() {
     setError("");
     
     try {
+      if (isDevBypassMode) {
+        const response = await fetchApi("/auth/dev-login", {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        });
+        login(response.accessToken, response.user);
+        return;
+      }
+
       const endpoint = isRegister ? "/auth/register" : "/auth/login";
       const payload = isRegister 
         ? { email, username, displayName, password }
@@ -49,7 +60,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-semibold text-white">Arcane Telemetry</h1>
           <p className="text-[13px] text-text-muted font-telemetry uppercase tracking-widest">
-            {isRegister ? "Node Registration" : "Node Authentication"}
+            {isDevBypassMode ? "Development Bypass Mode" : isRegister ? "Node Registration" : "Node Authentication"}
           </p>
         </div>
 
@@ -59,8 +70,27 @@ export default function LoginPage() {
           </div>
         )}
 
+        {process.env.NODE_ENV === "development" && (
+          <div className="flex bg-surface-dim border border-border-subtle rounded p-1 gap-1 mb-2">
+            <button
+              type="button"
+              onClick={() => setIsDevBypassMode(false)}
+              className={`flex-1 py-1.5 rounded text-[11px] font-telemetry uppercase tracking-wider transition-all ${!isDevBypassMode ? 'bg-surface-base text-white shadow-sm border border-border-subtle' : 'text-text-muted hover:text-white'}`}
+            >
+              Standard
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsDevBypassMode(true)}
+              className={`flex-1 py-1.5 rounded text-[11px] font-telemetry uppercase tracking-wider transition-all ${isDevBypassMode ? 'bg-secondary/20 text-secondary border border-secondary/50 glow-secondary shadow-sm' : 'text-text-muted hover:text-secondary'}`}
+            >
+              Dev Bypass
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {isRegister && (
+          {!isDevBypassMode && isRegister && (
             <>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] text-text-muted uppercase tracking-wider font-telemetry">Username</label>
@@ -86,7 +116,9 @@ export default function LoginPage() {
           )}
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider font-telemetry">Email Address</label>
+            <label className="text-[11px] text-text-muted uppercase tracking-wider font-telemetry">
+              {isDevBypassMode ? "Target Node Email" : "Email Address"}
+            </label>
             <input 
               type="email" 
               required
@@ -96,34 +128,38 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider font-telemetry">Encryption Key (Password)</label>
-            <input 
-              type="password" 
-              required
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="bg-surface-dim border border-border-subtle rounded px-4 py-2.5 text-[13px] focus:outline-none focus:border-secondary text-white font-telemetry"
-            />
-          </div>
+          {!isDevBypassMode && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] text-text-muted uppercase tracking-wider font-telemetry">Encryption Key (Password)</label>
+              <input 
+                type="password" 
+                required
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="bg-surface-dim border border-border-subtle rounded px-4 py-2.5 text-[13px] focus:outline-none focus:border-secondary text-white font-telemetry"
+              />
+            </div>
+          )}
 
           <button 
             type="submit"
-            className="mt-4 bg-primary text-background py-3 rounded text-[13px] font-bold glow-primary-hover w-full uppercase tracking-widest"
+            className={`mt-4 text-background py-3 rounded text-[13px] font-bold w-full uppercase tracking-widest ${isDevBypassMode ? 'bg-secondary glow-secondary-hover' : 'bg-primary glow-primary-hover'}`}
           >
-            {isRegister ? "Establish Link" : "Authenticate"}
+            {isDevBypassMode ? "Bypass Authentication" : isRegister ? "Establish Link" : "Authenticate"}
           </button>
         </form>
 
-        <div className="text-center mt-2 border-t border-border-subtle pt-6">
-          <button 
-            type="button"
-            onClick={() => { setIsRegister(!isRegister); setError(""); }}
-            className="text-[12px] text-text-muted hover:text-white transition-colors"
-          >
-            {isRegister ? "Already linked? Authenticate here." : "No node ID? Register here."}
-          </button>
-        </div>
+        {!isDevBypassMode && (
+          <div className="flex flex-col gap-4 mt-2 border-t border-border-subtle pt-6">
+            <button 
+              type="button"
+              onClick={() => { setIsRegister(!isRegister); setError(""); }}
+              className="text-[12px] text-text-muted hover:text-white transition-colors text-center w-full"
+            >
+              {isRegister ? "Already linked? Authenticate here." : "No node ID? Register here."}
+            </button>
+          </div>
+        )}
       </motion.div>
     </div>
   );

@@ -94,6 +94,38 @@ export class AuthService {
     };
   }
 
+  async devLogin(email: string): Promise<AuthResponse> {
+    if (process.env.NODE_ENV === "production") {
+      throw new UnauthorizedException("Dev login is disabled in production");
+    }
+    
+    let user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // Create user on the fly if it doesn't exist
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          username: email.split("@")[0],
+          displayName: "Dev User",
+          passwordHash: "bypass",
+        },
+      });
+    }
+
+    const accessToken = this.generateToken(user.id, user.email);
+
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl ?? undefined,
+      },
+    };
+  }
+
   async validateUserById(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },
