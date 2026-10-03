@@ -5,15 +5,17 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Seeding database...");
 
+  const HASH = "$2b$12$kyctqoNJBcIqgnEF4FYQOe8aWJbMG5D89KUiNkP6MD4GrU5c4zhW.";
+
   // Create a demo Game Master user
   const gm = await prisma.user.upsert({
     where: { email: "gm@questdreamer.dev" },
-    update: {},
+    update: { passwordHash: HASH },
     create: {
       email: "gm@questdreamer.dev",
       username: "dungeon_master",
       displayName: "The Dungeon Master",
-      passwordHash: "$2b$12$4L8qUfH5eZ51m9n4V8n/XOXdI3D//5M/eH3vYn7t3v9S5P0H6TjK.", // hash for 'password123'
+      passwordHash: HASH,
       bio: "Weaver of worlds and keeper of secrets.",
     },
   });
@@ -21,12 +23,12 @@ async function main() {
   // Create a demo Player user
   const player = await prisma.user.upsert({
     where: { email: "player@questdreamer.dev" },
-    update: {},
+    update: { passwordHash: HASH },
     create: {
       email: "player@questdreamer.dev",
       username: "hero_one",
       displayName: "Adventurer Prime",
-      passwordHash: "$2b$12$4L8qUfH5eZ51m9n4V8n/XOXdI3D//5M/eH3vYn7t3v9S5P0H6TjK.",
+      passwordHash: HASH,
       bio: "Seeker of treasure and glory.",
     },
   });
