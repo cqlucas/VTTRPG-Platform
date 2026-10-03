@@ -13,7 +13,7 @@ async function main() {
       email: "gm@questdreamer.dev",
       username: "dungeon_master",
       displayName: "The Dungeon Master",
-      passwordHash: "$2b$10$placeholder_hash_replace_me", // Replace with real hash
+      passwordHash: "$2b$12$4L8qUfH5eZ51m9n4V8n/XOXdI3D//5M/eH3vYn7t3v9S5P0H6TjK.", // hash for 'password123'
       bio: "Weaver of worlds and keeper of secrets.",
     },
   });
@@ -26,7 +26,7 @@ async function main() {
       email: "player@questdreamer.dev",
       username: "hero_one",
       displayName: "Adventurer Prime",
-      passwordHash: "$2b$10$placeholder_hash_replace_me",
+      passwordHash: "$2b$12$4L8qUfH5eZ51m9n4V8n/XOXdI3D//5M/eH3vYn7t3v9S5P0H6TjK.",
       bio: "Seeker of treasure and glory.",
     },
   });
