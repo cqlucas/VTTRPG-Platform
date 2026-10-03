@@ -1,0 +1,23 @@
+{
+  "name": "questdreamer-monorepo",
+  "private": true,
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:generate": "pnpm --filter @questdreamer/database generate",
+    "db:push": "pnpm --filter @questdreamer/database push",
+    "db:migrate": "pnpm --filter @questdreamer/database migrate",
+    "db:studio": "pnpm --filter @questdreamer/database studio",
+    "db:seed": "pnpm --filter @questdreamer/database seed",
+    "clean": "turbo run clean",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+  },
+  "devDependencies": {
+    "turbo": "^2.11.6"
+  }
+}

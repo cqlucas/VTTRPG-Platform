@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+// User & Authentication
+// ──────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  username      String   @unique
+  displayName   String
+  passwordHash  String
+  avatarUrl     String?
+  bio           String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  ownedCampaigns    Campaign[]       @relation("CampaignOwner")
+  campaignMembers   CampaignMember[]
+
+  @@map("users")
+}
+
+// ──────────────────────────────────────────────
+// Campaigns (Game Tables / Sessions)
+// ──────────────────────────────────────────────
+
+model Campaign {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  coverImageUrl String?
+  gameSystem    String   @default("generic")  // e.g. "dnd5e", "pathfinder2e", "generic"
+  isPublic      Boolean  @default(false)
+  maxPlayers    Int      @default(6)
+  status        CampaignStatus @default(DRAFT)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  ownerId       String
+  owner         User             @relation("CampaignOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members       CampaignMember[]
+
+  @@index([ownerId])
+  @@index([status, isPublic])
+  @@map("campaigns")
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+model CampaignMember {
+  id         String   @id @default(cuid())
+  role       CampaignRole @default(PLAYER)
+  joinedAt   DateTime @default(now())
+
+  // Relations
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campaignId])
+  @@index([campaignId])
+  @@map("campaign_members")
+}
+
+enum CampaignRole {
+  GAME_MASTER
+  PLAYER
+  SPECTATOR
+}
+
+
