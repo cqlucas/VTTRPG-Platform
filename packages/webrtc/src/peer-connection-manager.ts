@@ -107,14 +107,37 @@ export class PeerConnectionManager {
       if (this.destroyed) return;
       try {
         const message: DataChannelMessage = JSON.parse(event.data);
-        console.log(`[WebRTC] Received message from ${peerId}:`, message.type);
+        // console.log(`[WebRTC] Received message from ${peerId}:`, message.type);
         
-        // If we are the Host, relay the message to all other peers (Star Topology)
-        if (this.isHost) {
-          this.broadcast(message, peerId);
+        let shouldBroadcast = true;
+        let shouldProcessLocally = true;
+        let whisperTargetId: string | undefined;
+
+        // Secure DM Routing Logic
+        if (message.type === "chat" && message.payload.isWhisper) {
+          shouldBroadcast = false;
+          whisperTargetId = message.payload.whisperTargetId;
+          
+          // If we (the Host) are receiving this, but we are not the intended recipient,
+          // do NOT process it locally (meaning the GM won't see players whispering each other).
+          if (whisperTargetId !== this.localPeerId) {
+            shouldProcessLocally = false;
+          }
         }
 
-        this.config.onMessage(peerId, message);
+        // If we are the Host, relay the message (Star Topology)
+        if (this.isHost) {
+          if (shouldBroadcast) {
+            this.broadcast(message, peerId);
+          } else if (whisperTargetId && whisperTargetId !== this.localPeerId) {
+            // Forward the private message securely to the intended target only
+            this.send(whisperTargetId, message);
+          }
+        }
+
+        if (shouldProcessLocally) {
+          this.config.onMessage(peerId, message);
+        }
       } catch (err) {
         console.error(`[WebRTC] Failed to parse DataChannel message from ${peerId}`, err);
       }

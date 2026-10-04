@@ -233,7 +233,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         id: message.payload.id,
         sender: message.payload.senderName,
         text: message.payload.content,
-        type: "chat",
+        type: message.payload.isWhisper ? "dm-received" : "chat",
         timestamp: formatTime(message.payload.timestamp)
       }]);
     } else if (message.type === "dice-roll") {
@@ -311,7 +311,9 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
       senderId: user.id,
       senderName: user.displayName,
       content: chatMessage,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      isWhisper: dmTarget !== null,
+      whisperTargetId: dmTarget?.peerId
     };
 
     // Add to own UI
@@ -324,7 +326,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         type: "dm-sent",
         timestamp: formatTime(msgPayload.timestamp)
       }]);
-      // Mock network send since WebRTC logic for DM is not requested for this phase
+      sendP2P({ type: "chat", payload: msgPayload });
     } else {
       setChatHistory(prev => [...prev, {
         id: msgPayload.id,
