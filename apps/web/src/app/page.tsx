@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Hexagon, Users, Plus, Search, Shield, Bell, LogOut, LayoutGrid, User } from "lucide-react";
+import { Hexagon, Users, Plus, Search, Shield, Bell, LogOut, LayoutGrid, User, Library } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
+import { LibraryContent } from "@/components/LibraryContent";
 
 export default function DashboardPage() {
   const [inviteCode, setInviteCode] = useState("");
@@ -86,6 +87,18 @@ export default function DashboardPage() {
           </button>
           
           <button 
+            onClick={() => setActiveTab("biblioteca")}
+            className={`w-full p-3 rounded flex items-center gap-3 font-medium text-[13px] transition-colors ${
+              activeTab === "biblioteca" 
+                ? "bg-surface-base border border-border-subtle text-white" 
+                : "bg-transparent border border-transparent hover:border-border-subtle text-text-muted hover:text-white"
+            }`}
+          >
+            <Library className="w-4 h-4" />
+            Biblioteca
+          </button>
+          
+          <button 
             onClick={() => setActiveTab("perfil")}
             className={`w-full p-3 rounded flex items-center gap-3 font-medium text-[13px] transition-colors ${
               activeTab === "perfil" 
@@ -119,7 +132,7 @@ export default function DashboardPage() {
       </motion.aside>
 
       <main className="flex-1 p-8 overflow-y-auto flex flex-col items-center relative">
-        <div className="max-w-5xl w-full flex flex-col gap-10 z-10 mt-4">
+        <div className="max-w-5xl w-full flex flex-col gap-10 z-10 mt-4 h-full">
           
           {activeTab === "campanhas" ? (
             <>
@@ -250,6 +263,8 @@ export default function DashboardPage() {
                 </div>
               </motion.div>
             </>
+          ) : activeTab === "biblioteca" ? (
+            <LibraryContent />
           ) : (
             <motion.div 
               initial={{ y: 20, opacity: 0 }}
