@@ -31,11 +31,19 @@ export default function DashboardPage() {
 
   const handleJoin = async () => {
     if (!inviteCode) return;
+    
+    // Check if the user is already a member
+    if (myTables.some(t => t.id === inviteCode)) {
+      router.push(`/table/${inviteCode}`);
+      return;
+    }
+
     try {
       await fetchApi(`/campaigns/${inviteCode}/join`, { method: "POST" });
       const updated = await fetchApi("/campaigns/my");
       setMyTables(updated);
       setInviteCode("");
+      router.push(`/table/${inviteCode}`);
     } catch (err) {
       alert("Failed to join: " + (err as Error).message);
     }

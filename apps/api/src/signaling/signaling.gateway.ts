@@ -7,7 +7,7 @@ import {
   ConnectedSocket,
   MessageBody,
 } from "@nestjs/websockets";
-import { Server, Socket } from "socket.io";
+import { Namespace, Server, Socket } from "socket.io";
 import type {
   SignalOffer,
   SignalAnswer,
@@ -20,23 +20,9 @@ interface RoomPeer {
   socketId: string;
   peerId: string;
   displayName: string;
+  isHost: boolean;
 }
 
-/**
- * WebSocket Gateway for WebRTC Signaling.
- *
- * This gateway does NOT process game logic or movement data.
- * Its sole purpose is to relay SDP offers/answers and ICE candidates
- * between peers to establish direct P2P connections.
- *
- * Flow:
- * 1. Player joins a room (campaign) via "room:join"
- * 2. Player sends an SDP offer to the Host (GM) via "signal:offer"
- * 3. Host responds with an SDP answer via "signal:answer"
- * 4. Both exchange ICE candidates via "signal:ice-candidate"
- * 5. Once the P2P connection is established, all game data flows directly
- *    between peers — the signaling server is no longer needed.
- */
 @WebSocketGateway({
   cors: {
     origin: process.env.FRONTEND_URL ?? "http://localhost:3000",
@@ -76,10 +62,19 @@ export class SignalingGateway
   handleJoinRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    payload: { campaignId: string; peerId: string; displayName: string },
+    payload: { campaignId: string; peerId: string; displayName: string; isHost: boolean },
   ) {
-    const { campaignId, peerId, displayName } = payload;
-    console.log(`📥 ${displayName} (${peerId}) joining room ${campaignId}`);
+    const { campaignId, displayName, isHost } = payload;
+    // The socket id is the authoritative peer id (never trust the client payload)
+    const peerId = client.id;
+    console.log(`📥 ${displayName} (${peerId}) joining room ${campaignId} [Host: ${isHost}]`);
+
+    // If this socket was already registered (re-join / room switch), drop the old entry first
+    const previous = this.socketToPeer.get(client.id);
+    if (previous) {
+      this.removePeerFromRoom(previous.campaignId, previous.peerId, client);
+      this.socketToPeer.delete(client.id);
+    }
 
     // Join the Socket.io room for broadcasting
     client.join(campaignId);
@@ -89,17 +84,29 @@ export class SignalingGateway
       this.rooms.set(campaignId, new Map());
     }
     const room = this.rooms.get(campaignId)!;
-    room.set(peerId, { socketId: client.id, peerId, displayName });
+
+    // Purge stale entries whose sockets are no longer connected
+    // (with a namespaced gateway, Nest injects a Namespace whose `sockets` is a Map)
+    const liveSockets = (this.server as unknown as Namespace).sockets;
+    for (const [id, p] of room) {
+      if (!liveSockets.has(p.socketId)) {
+        room.delete(id);
+        this.socketToPeer.delete(p.socketId);
+        this.server.to(campaignId).emit("room:peer-left", { peerId: id });
+      }
+    }
+
+    room.set(peerId, { socketId: client.id, peerId, displayName, isHost });
 
     this.socketToPeer.set(client.id, { campaignId, peerId });
 
     // Notify existing peers about the new joiner
-    client.to(campaignId).emit("room:peer-joined", { peerId, displayName });
+    client.to(campaignId).emit("room:peer-joined", { peerId, displayName, isHost });
 
     // Send the list of existing peers to the new joiner
     const existingPeers = Array.from(room.values())
       .filter((p) => p.peerId !== peerId)
-      .map((p) => ({ peerId: p.peerId, displayName: p.displayName }));
+      .map((p) => ({ peerId: p.peerId, displayName: p.displayName, isHost: p.isHost }));
 
     client.emit("room:peers-list", { peers: existingPeers });
   }

@@ -54,6 +54,14 @@ export interface ChatMessage {
   whisperTargetId?: string;
 }
 
+/** A group of identical dice inside a roll, e.g. "2d8" (or "-1d4") */
+export interface DiceRollGroup {
+  count: number;
+  sides: number;
+  sign: 1 | -1;
+  results: number[];
+}
+
 /** Dice roll result sent over P2P */
 export interface DiceRoll {
   id: string;
@@ -64,6 +72,8 @@ export interface DiceRoll {
   total: number;
   timestamp: number;
   isSecret?: boolean;     // GM-only roll
+  groups?: DiceRollGroup[]; // structured breakdown per dice group
+  modifier?: number;        // sum of flat modifiers (+x / -x)
 }
 
 /** Types of messages sent over WebRTC Data Channels */

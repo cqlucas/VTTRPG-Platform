@@ -35,6 +35,7 @@ export class PeerConnectionManager {
   private isHost: boolean;
   private campaignId: string;
   private localPeerId: string;
+  private destroyed = false;
 
   constructor(
     config: PeerConnectionConfig,
@@ -84,10 +85,29 @@ export class PeerConnectionManager {
     return pc;
   }
 
+  private pendingMessages = new Map<string, string[]>();
+
   private setupDataChannel(peerId: string, channel: RTCDataChannel) {
+    console.log(`[WebRTC] Setting up data channel for ${peerId}`);
+    
+    channel.onopen = () => {
+      console.log(`[WebRTC] Data channel OPEN for ${peerId}`);
+      // Flush pending messages
+      const pending = this.pendingMessages.get(peerId);
+      if (pending && pending.length > 0) {
+        console.log(`[WebRTC] Flushing ${pending.length} pending messages for ${peerId}`);
+        for (const msg of pending) {
+          channel.send(msg);
+        }
+        this.pendingMessages.delete(peerId);
+      }
+    };
+
     channel.onmessage = (event) => {
+      if (this.destroyed) return;
       try {
         const message: DataChannelMessage = JSON.parse(event.data);
+        console.log(`[WebRTC] Received message from ${peerId}:`, message.type);
         
         // If we are the Host, relay the message to all other peers (Star Topology)
         if (this.isHost) {
@@ -96,29 +116,35 @@ export class PeerConnectionManager {
 
         this.config.onMessage(peerId, message);
       } catch (err) {
-        console.error("Failed to parse DataChannel message", err);
+        console.error(`[WebRTC] Failed to parse DataChannel message from ${peerId}`, err);
       }
     };
 
-    channel.onclose = () => this.cleanupConnection(peerId);
+    channel.onclose = () => {
+      console.log(`[WebRTC] Data channel closed for ${peerId}`);
+      this.cleanupConnection(peerId);
+    };
     
     this.dataChannels.set(peerId, channel);
   }
 
   private cleanupConnection(peerId: string) {
     const pc = this.connections.get(peerId);
-    if (pc) {
-      pc.close();
-      this.connections.delete(peerId);
-    }
-    
     const dc = this.dataChannels.get(peerId);
-    if (dc) {
-      dc.close();
-      this.dataChannels.delete(peerId);
-    }
+    // Idempotent: pc.close() triggers dc.onclose which re-enters here
+    if (!pc && !dc) return;
 
-    this.config.onPeerDisconnected?.(peerId);
+    this.connections.delete(peerId);
+    this.dataChannels.delete(peerId);
+    this.pendingMessages.delete(peerId);
+    this.pendingIceCandidates.delete(peerId);
+
+    dc?.close();
+    pc?.close();
+
+    if (!this.destroyed) {
+      this.config.onPeerDisconnected?.(peerId);
+    }
   }
 
   /** Create an offer to connect to a peer (called by the player connecting to host) */
@@ -128,11 +154,8 @@ export class PeerConnectionManager {
     // The peer initiating connection creates the Data Channel
     const dc = pc.createDataChannel("vtt-sync", {
       ordered: true,
-      maxRetransmits: 3, // Reliable transport for standard sync
+      // Removed maxRetransmits to ensure 100% reliable TCP-like delivery
     });
-    
-    // Create a secondary channel for large file/blob transfers if needed later
-    // pc.createDataChannel("vtt-files", { ordered: true });
     
     this.setupDataChannel(targetPeerId, dc);
 
@@ -150,81 +173,178 @@ export class PeerConnectionManager {
     return offer;
   }
 
+  private negotiatingPeers = new Set<string>();
+  private pendingIceCandidates = new Map<string, RTCIceCandidateInit[]>();
+
   /** Handle an incoming SDP offer (called on the host) */
-  async handleOffer(fromPeerId: string, sdp: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
-    let pc = this.connections.get(fromPeerId);
-    if (!pc) {
-      pc = this.createConnection(fromPeerId);
+  async handleOffer(fromPeerId: string, sdp: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit | null> {
+    if (this.negotiatingPeers.has(fromPeerId)) {
+      console.warn(`[WebRTC] Ignoring concurrent offer from ${fromPeerId}`);
+      return null;
     }
+    
+    this.negotiatingPeers.add(fromPeerId);
 
-    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
+    try {
+      let pc = this.connections.get(fromPeerId);
+      if (!pc) {
+        pc = this.createConnection(fromPeerId);
+      }
 
-    this.config.onSignalSend({
-      type: "answer",
-      fromPeerId: this.localPeerId,
-      toPeerId: fromPeerId,
-      campaignId: this.campaignId,
-      sdp: answer,
-    });
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
 
-    return answer;
+      this.config.onSignalSend({
+        type: "answer",
+        fromPeerId: this.localPeerId,
+        toPeerId: fromPeerId,
+        campaignId: this.campaignId,
+        sdp: answer,
+      });
+
+      this.flushPendingIceCandidates(fromPeerId, pc);
+      return answer;
+    } catch (err) {
+      console.error(`[WebRTC] Failed to handle offer from ${fromPeerId}:`, err);
+      return null;
+    } finally {
+      this.negotiatingPeers.delete(fromPeerId);
+    }
   }
 
   /** Handle an incoming SDP answer (called on the peer that sent the offer) */
   async handleAnswer(fromPeerId: string, sdp: RTCSessionDescriptionInit): Promise<void> {
     const pc = this.connections.get(fromPeerId);
     if (pc) {
-      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      if (pc.signalingState === "have-local-offer") {
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        this.flushPendingIceCandidates(fromPeerId, pc);
+      } else {
+        console.warn(`[WebRTC] Ignoring answer from ${fromPeerId} (state: ${pc.signalingState})`);
+      }
     } else {
-      console.warn("Received answer for unknown peer:", fromPeerId);
+      console.warn("[WebRTC] Received answer for unknown peer:", fromPeerId);
     }
   }
 
   /** Handle an incoming ICE candidate */
   async handleIceCandidate(fromPeerId: string, candidate: RTCIceCandidateInit): Promise<void> {
     const pc = this.connections.get(fromPeerId);
-    if (pc) {
+    if (pc && pc.remoteDescription) {
       try {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
       } catch (e) {
-        console.error("Error adding received ICE candidate", e);
+        console.error("[WebRTC] Error adding received ICE candidate", e);
       }
     } else {
-      console.warn("Received ICE candidate for unknown peer:", fromPeerId);
+      console.log(`[WebRTC] Queuing ICE candidate for ${fromPeerId}`);
+      const pending = this.pendingIceCandidates.get(fromPeerId) || [];
+      pending.push(candidate);
+      this.pendingIceCandidates.set(fromPeerId, pending);
+    }
+  }
+
+  private async flushPendingIceCandidates(peerId: string, pc: RTCPeerConnection) {
+    const pending = this.pendingIceCandidates.get(peerId);
+    if (pending && pending.length > 0) {
+      console.log(`[WebRTC] Flushing ${pending.length} pending ICE candidates for ${peerId}`);
+      for (const candidate of pending) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.error("[WebRTC] Error adding pending ICE candidate", e);
+        }
+      }
+      this.pendingIceCandidates.delete(peerId);
     }
   }
 
   /** Send a message to a specific peer */
   send(peerId: string, message: DataChannelMessage): void {
     const dc = this.dataChannels.get(peerId);
-    if (dc && dc.readyState === "open") {
-      dc.send(JSON.stringify(message));
+    const data = JSON.stringify(message);
+    
+    if (dc) {
+      if (dc.readyState === "open") {
+        dc.send(data);
+      } else if (dc.readyState === "connecting") {
+        const pending = this.pendingMessages.get(peerId) || [];
+        pending.push(data);
+        this.pendingMessages.set(peerId, pending);
+      } else {
+        console.warn(`[WebRTC] Cannot send to ${peerId}: readyState is ${dc.readyState}`);
+      }
+    } else {
+      console.warn(`[WebRTC] Cannot send message: Data channel for ${peerId} not found`);
+    }
+  }
+
+  /** Send a message to the host (called by players) */
+  sendToHost(message: DataChannelMessage): void {
+    const data = JSON.stringify(message);
+    let handled = false;
+    
+    // First pass: send to all OPEN host connections
+    for (const [peerId, dc] of this.dataChannels.entries()) {
+      if (dc.readyState === "open") {
+        dc.send(data);
+        handled = true;
+      }
+    }
+    
+    // Second pass: if no open connections were found, queue it on CONNECTING ones
+    if (!handled) {
+      for (const [peerId, dc] of this.dataChannels.entries()) {
+        if (dc.readyState === "connecting") {
+          const pending = this.pendingMessages.get(peerId) || [];
+          pending.push(data);
+          this.pendingMessages.set(peerId, pending);
+          handled = true;
+        }
+      }
+    }
+    
+    if (!handled) {
+      console.warn("[WebRTC] Cannot send message to host: No data channels available.");
     }
   }
 
   /** Broadcast a message to all connected peers (host only) */
   broadcast(message: DataChannelMessage, excludePeerId?: string): void {
     const data = JSON.stringify(message);
+    let sentCount = 0;
     
     for (const [peerId, dc] of this.dataChannels.entries()) {
-      if (peerId !== excludePeerId && dc.readyState === "open") {
-        dc.send(data);
+      if (peerId !== excludePeerId) {
+        if (dc.readyState === "open") {
+          dc.send(data);
+          sentCount++;
+        } else if (dc.readyState === "connecting") {
+          const pending = this.pendingMessages.get(peerId) || [];
+          pending.push(data);
+          this.pendingMessages.set(peerId, pending);
+          sentCount++;
+        } else {
+          console.warn(`[WebRTC] Cannot broadcast to ${peerId}: readyState is ${dc.readyState}`);
+        }
       }
     }
+    
+    console.log(`[WebRTC] Broadcasted to ${sentCount} peers`);
   }
 
   /** Close all connections and clean up */
   destroy(): void {
-    for (const [, dc] of this.dataChannels) {
-      dc.close();
-    }
-    for (const [, pc] of this.connections) {
-      pc.close();
-    }
+    this.destroyed = true;
+    const dcs = Array.from(this.dataChannels.values());
+    const pcs = Array.from(this.connections.values());
     this.connections.clear();
     this.dataChannels.clear();
+    this.pendingMessages.clear();
+    this.pendingIceCandidates.clear();
+    for (const dc of dcs) dc.close();
+    for (const pc of pcs) pc.close();
   }
 
   /** Get the number of active connections */

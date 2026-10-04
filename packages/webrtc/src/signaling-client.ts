@@ -47,23 +47,16 @@ export class SignalingClient {
       }
     });
 
-    this.socket.on("signal", (message: SignalMessage) => {
-      // Validate that the message belongs to our campaign
-      if (message.campaignId === this.config.campaignId) {
-        this.config.onSignalReceived(message);
-      }
+    this.socket.on("signal:offer", (message: SignalMessage) => {
+      this.config.onSignalReceived(message);
     });
 
-    this.socket.on("host-joined", () => {
-      if (this.config.onHostStatusChanged) {
-        this.config.onHostStatusChanged(true);
-      }
+    this.socket.on("signal:answer", (message: SignalMessage) => {
+      this.config.onSignalReceived(message);
     });
 
-    this.socket.on("host-left", () => {
-      if (this.config.onHostStatusChanged) {
-        this.config.onHostStatusChanged(false);
-      }
+    this.socket.on("signal:ice-candidate", (message: SignalMessage) => {
+      this.config.onSignalReceived(message);
     });
 
     this.socket.on("connect_error", (err) => {
@@ -71,9 +64,34 @@ export class SignalingClient {
     });
   }
 
+  joinRoom(displayName: string, isHost: boolean) {
+    if (!this.peerId) return;
+    this.socket.emit("room:join", { 
+      campaignId: this.config.campaignId,
+      peerId: this.peerId,
+      displayName,
+      isHost
+    });
+  }
+
+  leaveRoom() {
+    this.socket.emit("room:leave", { campaignId: this.config.campaignId });
+  }
+
+  onPeerJoined(cb: (payload: { peerId: string; displayName: string; isHost: boolean }) => void) {
+    this.socket.on("room:peer-joined", cb);
+  }
+
+  onPeerLeft(cb: (payload: { peerId: string }) => void) {
+    this.socket.on("room:peer-left", cb);
+  }
+
+  onPeersList(cb: (payload: { peers: Array<{ peerId: string; displayName: string; isHost: boolean }> }) => void) {
+    this.socket.on("room:peers-list", cb);
+  }
+
   /**
    * Send a signal message (Offer, Answer, ICE) to a specific peer.
-   * If `toPeerId` is "host", the server routes it to the campaign's host.
    */
   sendSignal(message: SignalMessage) {
     if (!this.socket.connected) {
@@ -84,7 +102,14 @@ export class SignalingClient {
     // Safety check to ensure we always include the campaign ID
     message.campaignId = this.config.campaignId;
     
-    this.socket.emit("signal", message);
+    // Emit the specific event based on message type
+    if (message.type === "offer") {
+      this.socket.emit("signal:offer", message);
+    } else if (message.type === "answer") {
+      this.socket.emit("signal:answer", message);
+    } else if (message.type === "ice-candidate") {
+      this.socket.emit("signal:ice-candidate", message);
+    }
   }
 
   disconnect() {
