@@ -12,6 +12,7 @@ export default function EditProfilePage() {
   const router = useRouter();
   
   const [displayName, setDisplayName] = useState(user?.displayName || "");
+  const [username, setUsername] = useState(user?.username || "");
   const [email, setEmail] = useState(user?.email || "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -79,6 +80,24 @@ export default function EditProfilePage() {
                     placeholder="Seu nome"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[13px] text-text-muted mb-1.5 font-medium">Nome de Usuário (@)</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
+                    <span className="text-[15px] font-bold">@</span>
+                  </div>
+                  <input 
+                    type="text" 
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    className="w-full bg-surface-dim border border-border-subtle rounded-md pl-10 pr-4 py-2.5 text-white placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-[14px]"
+                    placeholder="nome_de_usuario"
+                  />
+                </div>
+                <p className="text-[11px] text-text-muted mt-1">Apenas letras minúsculas, números e underlines (_).</p>
               </div>
 
               <div>

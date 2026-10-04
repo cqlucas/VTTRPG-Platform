@@ -82,7 +82,7 @@ export default function DashboardPage() {
             }`}
           >
             <LayoutGrid className="w-4 h-4" />
-            Campanhas
+            Mesas
           </button>
           
           <button 
