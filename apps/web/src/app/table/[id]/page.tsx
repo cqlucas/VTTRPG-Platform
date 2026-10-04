@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, use, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, MessageSquare, Users, Settings, Dices, Send, Shield, Hexagon, Activity } from "lucide-react";
+import { ArrowLeft, MessageSquare, Users, Settings, Dices, Send, Shield, Hexagon, Activity, MoreVertical, Mail } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { fetchApi } from "@/lib/api";
 import { parseDiceExpression, rollExpression, type ParsedDiceExpression } from "@/lib/dice";
@@ -22,9 +22,10 @@ interface ChatLogMessage {
   id: string;
   sender: string;
   text: string;
-  type: "system" | "chat" | "system-alert" | "roll";
+  type: "system" | "chat" | "system-alert" | "roll" | "dm-received" | "dm-sent";
   timestamp: string;
   roll?: DiceRoll;
+  recipient?: string;
 }
 
 export default function TablePage({ params }: { params: Promise<{ id: string }> }) {
@@ -41,6 +42,9 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   
   const [peers, setPeers] = useState<PeerState[]>([]);
   const [isDiceOpen, setIsDiceOpen] = useState(false);
+  const [dmTarget, setDmTarget] = useState<PeerState | null>(null);
+  const [openMenuPeer, setOpenMenuPeer] = useState<string | null>(null);
+  const [isTargetDropdownOpen, setIsTargetDropdownOpen] = useState(false);
   const closeDice = useCallback(() => setIsDiceOpen(false), []);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -311,15 +315,26 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
     };
 
     // Add to own UI
-    setChatHistory(prev => [...prev, {
-      id: msgPayload.id,
-      sender: msgPayload.senderName,
-      text: msgPayload.content,
-      type: "chat",
-      timestamp: formatTime(msgPayload.timestamp)
-    }]);
-
-    sendP2P({ type: "chat", payload: msgPayload });
+    if (dmTarget) {
+      setChatHistory(prev => [...prev, {
+        id: msgPayload.id,
+        sender: user.displayName,
+        recipient: dmTarget.displayName,
+        text: msgPayload.content,
+        type: "dm-sent",
+        timestamp: formatTime(msgPayload.timestamp)
+      }]);
+      // Mock network send since WebRTC logic for DM is not requested for this phase
+    } else {
+      setChatHistory(prev => [...prev, {
+        id: msgPayload.id,
+        sender: msgPayload.senderName,
+        text: msgPayload.content,
+        type: "chat",
+        timestamp: formatTime(msgPayload.timestamp)
+      }]);
+      sendP2P({ type: "chat", payload: msgPayload });
+    }
 
     setChatMessage("");
   };
@@ -372,7 +387,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
             
             {/* Show other peers */}
             {peers.map((p) => (
-              <div key={p.peerId} className="flex items-center justify-between p-2 rounded hover:bg-surface-bright transition-colors cursor-pointer border border-transparent hover:border-border-subtle group">
+              <div key={p.peerId} className="flex items-center justify-between p-2 rounded hover:bg-surface-bright transition-colors cursor-pointer border border-transparent hover:border-border-subtle group relative">
                 <div className="flex items-center gap-3">
                   <div className={`w-6 h-6 rounded flex items-center justify-center border ${p.isHost ? 'border-primary/50 text-primary bg-primary/10' : 'border-secondary/50 text-secondary bg-secondary/10'}`}>
                     {p.isHost ? <Shield className="w-3 h-3" /> : <Hexagon className="w-3 h-3" />}
@@ -382,11 +397,41 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                   </div>
                 </div>
                 
-                {/* Network Telemetry */}
-                <div className="flex items-center gap-1.5 font-telemetry text-[10px] text-text-muted">
-                  {p.ping > 0 ? `${p.ping}ms` : 'CONN'}
-                  <div className={`w-1.5 h-1.5 rounded-full ${getPingColor(p.ping)}`} />
+                <div className="flex items-center gap-1.5">
+                  {/* Network Telemetry - Hides on hover to make space for actions */}
+                  <div className="flex items-center gap-1.5 font-telemetry text-[10px] text-text-muted group-hover:hidden">
+                    {p.ping > 0 ? `${p.ping}ms` : 'CONN'}
+                    <div className={`w-1.5 h-1.5 rounded-full ${getPingColor(p.ping)}`} />
+                  </div>
+                  
+                  {/* Hover Actions */}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMenuPeer(openMenuPeer === p.peerId ? null : p.peerId);
+                    }}
+                    className="hidden group-hover:flex items-center justify-center p-1 rounded hover:bg-surface-base text-text-muted hover:text-white transition-colors"
+                  >
+                    <MoreVertical className="w-3.5 h-3.5" />
+                  </button>
                 </div>
+
+                {/* Dropdown Menu */}
+                {openMenuPeer === p.peerId && (
+                  <div className="absolute right-2 top-8 z-50 w-36 bg-surface-base border border-border-subtle rounded shadow-xl py-1 overflow-hidden">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDmTarget(p);
+                        setOpenMenuPeer(null);
+                      }}
+                      className="w-full text-left px-3 py-2 text-[12px] text-text-muted hover:text-white hover:bg-surface-bright transition-colors flex items-center gap-2"
+                    >
+                      <Mail className="w-3.5 h-3.5" /> 
+                      Enviar DM
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -445,6 +490,24 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                 </div>
               )}
 
+              {msg.type === 'dm-received' && (
+                <div className="bg-indigo-950/30 border-l-2 border-indigo-500 p-2.5 rounded text-text-base break-words">
+                  <div className="text-[10px] font-telemetry text-indigo-400 mb-1">
+                    DM &lt; from {msg.sender}
+                  </div>
+                  <div className="text-white/90">{msg.text}</div>
+                </div>
+              )}
+
+              {msg.type === 'dm-sent' && (
+                <div className="bg-slate-900/50 border-l-2 border-slate-500 p-2.5 rounded text-text-base break-words">
+                  <div className="text-[10px] font-telemetry text-slate-400 mb-1">
+                    DM &gt; to {msg.recipient}
+                  </div>
+                  <div className="text-white/80">{msg.text}</div>
+                </div>
+              )}
+
               {msg.type === 'roll' && msg.roll && <DiceRollCard roll={msg.roll} />}
             </div>
           ))}
@@ -452,7 +515,41 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         </div>
 
         {/* Chat Input */}
-        <div className="p-4 border-t border-border-subtle layer-1-well">
+        <div className="p-4 border-t border-border-subtle layer-1-well flex flex-col gap-2">
+          
+          {/* DM Target Selector */}
+          <div className="relative self-start">
+            <button 
+              type="button"
+              onClick={() => setIsTargetDropdownOpen(!isTargetDropdownOpen)}
+              className="text-[10px] font-telemetry uppercase bg-surface-bright hover:bg-surface-base border border-border-subtle px-2 py-1 rounded text-text-muted hover:text-white transition-colors flex items-center gap-1"
+            >
+              {dmTarget ? `[Para: ${dmTarget.displayName}]` : "[Para: Toda a mesa]"}
+            </button>
+            
+            {isTargetDropdownOpen && (
+              <div className="absolute bottom-full left-0 mb-1 z-50 w-48 bg-surface-base border border-border-subtle rounded shadow-xl py-1 max-h-48 overflow-y-auto">
+                <button 
+                  type="button"
+                  onClick={() => { setDmTarget(null); setIsTargetDropdownOpen(false); }}
+                  className="w-full text-left px-3 py-1.5 text-[12px] text-text-muted hover:text-white hover:bg-surface-bright transition-colors"
+                >
+                  [ Toda a mesa ]
+                </button>
+                {peers.map(p => (
+                  <button 
+                    key={p.peerId}
+                    type="button"
+                    onClick={() => { setDmTarget(p); setIsTargetDropdownOpen(false); }}
+                    className="w-full text-left px-3 py-1.5 text-[12px] text-text-muted hover:text-white hover:bg-surface-bright transition-colors truncate flex items-center gap-2"
+                  >
+                    <Users className="w-3 h-3 opacity-50" /> {p.displayName}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <form onSubmit={sendChatMessage} className="relative">
             <input 
               id="chat-input"
