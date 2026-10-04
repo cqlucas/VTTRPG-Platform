@@ -254,9 +254,46 @@ export default function DashboardPage() {
             <motion.div 
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              className="flex items-center justify-center p-20 layer-3-floating rounded-lg border border-border-subtle text-text-muted"
+              className="flex flex-col gap-6"
             >
-              Página de Perfil em construção.
+              <div className="layer-3-floating rounded-lg p-8 md:p-10 flex flex-col md:flex-row gap-8 items-center md:items-start border border-border-subtle relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+                  <User className="w-64 h-64" />
+                </div>
+                
+                <div className="w-32 h-32 shrink-0 rounded-full bg-surface-base border-4 border-surface-dim flex items-center justify-center font-telemetry text-secondary text-5xl uppercase overflow-hidden shadow-xl z-10">
+                  {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover" /> : user.username.slice(0, 2)}
+                </div>
+                
+                <div className="flex flex-col items-center md:items-start gap-4 flex-1 z-10 w-full">
+                  <div className="text-center md:text-left">
+                    <h2 className="text-3xl font-bold text-white">{user.displayName}</h2>
+                    <p className="text-text-muted font-telemetry mt-1 text-sm">@{user.username}</p>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-4 justify-center md:justify-start w-full mt-2">
+                    <div className="bg-surface-dim rounded-lg p-4 border border-border-subtle flex-1 md:flex-none md:min-w-[150px] text-center">
+                      <div className="text-2xl font-bold text-primary">{myTables.length}</div>
+                      <div className="text-[11px] text-text-muted font-telemetry uppercase tracking-wider mt-1">Mesas Jogadas</div>
+                    </div>
+                    
+                    <div className="bg-surface-dim rounded-lg p-4 border border-border-subtle flex-1 md:flex-none md:min-w-[150px] text-center">
+                      <div className="text-2xl font-bold text-secondary">
+                        {(user as any).createdAt ? new Date((user as any).createdAt).getFullYear() : new Date().getFullYear()}
+                      </div>
+                      <div className="text-[11px] text-text-muted font-telemetry uppercase tracking-wider mt-1">Membro Desde</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 w-full md:w-auto">
+                    <Link href="/perfil/editar" className="block w-full">
+                      <button className="w-full md:w-auto bg-surface-floating hover:bg-slate-700 border border-border-subtle text-white px-8 py-2.5 rounded font-medium transition-colors text-[13px]">
+                        Editar Perfil
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           )}
 
