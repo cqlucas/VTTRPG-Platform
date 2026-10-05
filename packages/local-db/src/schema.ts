@@ -121,6 +121,7 @@ export interface SheetField {
 export interface SheetGroup {
   id: string;
   title?: string; // Optional title for the group
+  width?: 1 | 2 | 3; // Number of columns this group occupies (max 3)
   fields: SheetField[];
 }
 

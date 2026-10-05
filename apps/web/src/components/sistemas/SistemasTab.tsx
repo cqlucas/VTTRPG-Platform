@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { FileText, MoreVertical, PlusCircle, Save, Trash2, Edit2, Play, Settings, Plus, HelpCircle, X } from "lucide-react";
+import { FileText, MoreVertical, PlusCircle, Save, Trash2, Edit2, Play, Settings, Plus, HelpCircle, X, GripVertical } from "lucide-react";
 import { SheetTemplatesRepository, type SheetTemplate, type SheetTab, type SheetGroup, type SheetField } from "@questdreamer/local-db";
 import { useLiveQuery } from "../../lib/useLiveQuery";
 import { evaluateFormula } from "../../lib/formula";
@@ -81,6 +81,10 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [template, setTemplate] = useState<SheetTemplate | null>(null);
   
+  // Drag and drop states
+  const [dragSource, setDragSource] = useState<{tab: number, group: number} | null>(null);
+  const [dragTarget, setDragTarget] = useState<{tab: number, group: number} | null>(null);
+
   // Sheet mock values state for preview (View Mode)
   const [formValues, setFormValues] = useState<Record<string, number | string>>({});
 
@@ -155,6 +159,40 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
     saveTemplate({ ...template, tabs: newTabs });
   };
 
+  const handleDragStart = (e: React.DragEvent, tabIdx: number, groupIdx: number) => {
+    if (!isEditing) return;
+    e.dataTransfer.effectAllowed = "move";
+    setDragSource({ tab: tabIdx, group: groupIdx });
+  };
+
+  const handleDragOver = (e: React.DragEvent, tabIdx: number, groupIdx: number) => {
+    e.preventDefault();
+    if (!isEditing || !dragSource || dragSource.tab !== tabIdx) return;
+    if (dragTarget?.group !== groupIdx) {
+      setDragTarget({ tab: tabIdx, group: groupIdx });
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, tabIdx: number, groupIdx: number) => {
+    e.preventDefault();
+    if (!isEditing || !dragSource || dragSource.tab !== tabIdx) {
+      setDragTarget(null);
+      setDragSource(null);
+      return;
+    }
+    
+    if (dragSource.group !== groupIdx) {
+      const newTabs = [...template.tabs];
+      const groupList = Array.from(newTabs[tabIdx].groups);
+      const [moved] = groupList.splice(dragSource.group, 1);
+      groupList.splice(groupIdx, 0, moved);
+      newTabs[tabIdx].groups = groupList;
+      saveTemplate({ ...template, tabs: newTabs });
+    }
+    
+    setDragTarget(null);
+    setDragSource(null);
+  };
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col gap-6 h-full pb-8">
@@ -222,13 +260,50 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
                 )}
               </h3>
 
-              {tab.groups.map((group, gIdx) => (
-                <div key={group.id} className="border border-border-subtle bg-surface-dim rounded p-4 relative group">
-                  {isEditing && (
-                    <button onClick={() => handleDeleteGroup(tIdx, gIdx)} className="absolute top-2 right-2 p-1 text-text-muted hover:text-danger rounded hover:bg-danger/10">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start auto-rows-auto">
+                {tab.groups.map((group, gIdx) => {
+                  const w = group.width || 1;
+                  const colSpanClass = w === 3 ? "col-span-1 md:col-span-2 lg:col-span-3" : w === 2 ? "col-span-1 md:col-span-2" : "col-span-1";
+                  const isDraggingThis = dragSource?.tab === tIdx && dragSource?.group === gIdx;
+                  const isDragOver = dragTarget?.tab === tIdx && dragTarget?.group === gIdx;
+
+                  return (
+                    <div 
+                      key={group.id} 
+                      draggable={isEditing}
+                      onDragStart={(e) => handleDragStart(e, tIdx, gIdx)}
+                      onDragOver={(e) => handleDragOver(e, tIdx, gIdx)}
+                      onDrop={(e) => handleDrop(e, tIdx, gIdx)}
+                      onDragEnd={() => { setDragSource(null); setDragTarget(null); }}
+                      className={`border border-border-subtle bg-surface-dim rounded p-4 relative group transition-all duration-200 ${colSpanClass} ${isDraggingThis ? "opacity-50 scale-[0.98]" : ""} ${isDragOver && !isDraggingThis ? "border-primary border-dashed bg-primary/10 scale-[1.02]" : ""}`}
+                    >
+                      {isEditing && (
+                        <div className="absolute top-2 right-2 flex items-center">
+                          <div className="flex bg-surface-base border border-border-subtle rounded overflow-hidden mr-2">
+                            <button onClick={() => {
+                                const newTabs = [...template.tabs];
+                                newTabs[tIdx].groups[gIdx].width = 1;
+                                saveTemplate({...template, tabs: newTabs});
+                            }} className={`px-2 py-0.5 text-[10px] ${group.width === 1 || !group.width ? "bg-primary text-white font-bold" : "text-text-muted hover:bg-surface-bright"}`} title="1 Coluna">1C</button>
+                            <button onClick={() => {
+                                const newTabs = [...template.tabs];
+                                newTabs[tIdx].groups[gIdx].width = 2;
+                                saveTemplate({...template, tabs: newTabs});
+                            }} className={`px-2 py-0.5 text-[10px] ${group.width === 2 ? "bg-primary text-white font-bold" : "text-text-muted hover:bg-surface-bright"}`} title="2 Colunas">2C</button>
+                            <button onClick={() => {
+                                const newTabs = [...template.tabs];
+                                newTabs[tIdx].groups[gIdx].width = 3;
+                                saveTemplate({...template, tabs: newTabs});
+                            }} className={`px-2 py-0.5 text-[10px] ${group.width === 3 ? "bg-primary text-white font-bold" : "text-text-muted hover:bg-surface-bright"}`} title="3 Colunas">3C</button>
+                          </div>
+                          <div className="p-1 text-text-muted hover:text-white cursor-grab active:cursor-grabbing mr-1" title="Arraste para reordenar">
+                            <GripVertical className="w-4 h-4" />
+                          </div>
+                          <button onClick={() => handleDeleteGroup(tIdx, gIdx)} className="p-1 text-text-muted hover:text-danger rounded hover:bg-danger/10" title="Remover Grupo">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                   {group.title || isEditing ? (
                     <div className="mb-4">
                       {isEditing ? (
@@ -252,19 +327,19 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
                         </label>
 
                         {isEditing ? (
-                          <div className="flex flex-col gap-2 p-2 border border-border-subtle rounded bg-surface-base">
+                          <div className="flex flex-col gap-2 p-2 border border-border-subtle rounded bg-surface-base min-w-0 overflow-hidden">
                             <input 
                               type="text" 
                               value={field.label} 
                               onChange={e => handleUpdateField(tIdx, gIdx, fIdx, {...field, label: e.target.value})} 
-                              className="bg-background border border-border-subtle rounded px-2 py-1 text-[12px] text-white" 
+                              className="bg-background border border-border-subtle rounded px-2 py-1 text-[12px] text-white w-full min-w-0" 
                               placeholder="Nome do campo"
                             />
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 w-full">
                               <select 
                                 value={field.type} 
                                 onChange={e => handleUpdateField(tIdx, gIdx, fIdx, {...field, type: e.target.value as any})}
-                                className="bg-background border border-border-subtle rounded px-2 py-1 text-[12px] text-white flex-1"
+                                className="bg-background border border-border-subtle rounded px-2 py-1 text-[12px] text-white flex-1 min-w-0"
                               >
                                 <option value="text">Texto</option>
                                 <option value="int">Inteiro</option>
@@ -275,17 +350,17 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
                                 type="text" 
                                 value={field.id} 
                                 onChange={e => handleUpdateField(tIdx, gIdx, fIdx, {...field, id: e.target.value.replace(/[^a-zA-Z0-9_]/g, '')})} 
-                                className="bg-background border border-border-subtle rounded px-2 py-1 text-[12px] text-white w-20" 
+                                className="bg-background border border-border-subtle rounded px-2 py-1 text-[12px] text-white w-16 shrink-0" 
                                 placeholder="ID"
                               />
                             </div>
                             {field.type === "calculated" && (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 w-full">
                                 <input 
                                   type="text" 
                                   value={field.formula || ""} 
                                   onChange={e => handleUpdateField(tIdx, gIdx, fIdx, {...field, formula: e.target.value})} 
-                                  className="bg-indigo-950/50 border border-indigo-500/50 rounded px-2 py-1 text-[12px] text-indigo-200 font-mono flex-1" 
+                                  className="bg-indigo-950/50 border border-indigo-500/50 rounded px-2 py-1 text-[12px] text-indigo-200 font-mono flex-1 min-w-0" 
                                   placeholder="Fórmula ex: floor((str-10)/2)"
                                 />
                                 <button type="button" onClick={() => setIsHelpOpen(true)} className="p-1.5 rounded bg-surface-dim hover:bg-surface-bright text-text-muted hover:text-secondary transition-colors" title="Como usar fórmulas?">
@@ -302,13 +377,14 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
                     ))}
                     
                     {isEditing && (
-                      <button onClick={() => handleAddField(tIdx, gIdx)} className="border border-dashed border-border-subtle rounded flex items-center justify-center p-3 text-text-muted hover:text-white hover:bg-surface-base transition-colors h-full min-h-[60px]">
-                        <Plus className="w-4 h-4" />
+                      <button onClick={() => handleAddField(tIdx, gIdx)} className="border border-dashed border-border-subtle rounded flex items-center justify-center p-3 text-text-muted hover:text-white hover:bg-surface-base transition-colors h-full min-h-[60px] col-span-2 md:col-span-3">
+                        <Plus className="w-4 h-4" /> Adicionar Campo
                       </button>
                     )}
                   </div>
                 </div>
-              ))}
+              )})}
+              </div>
 
               {isEditing && (
                 <button onClick={() => handleAddGroup(tIdx)} className="border-2 border-dashed border-border-subtle rounded-lg flex items-center justify-center py-4 text-text-muted hover:text-white hover:bg-surface-dim transition-colors w-full mt-2 gap-2">
@@ -392,7 +468,7 @@ function FieldValuePreview({ field, formValues, onChange }: { field: SheetField,
     }
     const val = evaluateFormula(field.formula || "", context);
     return (
-      <div className="bg-surface-base border border-border-subtle rounded px-3 py-1.5 text-white font-mono flex items-center h-[34px]">
+      <div className="bg-surface-base border border-border-subtle rounded px-3 py-1.5 text-white font-mono flex items-center h-[34px] w-full overflow-hidden text-ellipsis whitespace-nowrap">
         {val}
       </div>
     );
@@ -404,7 +480,7 @@ function FieldValuePreview({ field, formValues, onChange }: { field: SheetField,
         type="number" 
         value={formValues[field.id] || ""} 
         onChange={e => onChange(field.type === 'int' ? parseInt(e.target.value) || 0 : parseFloat(e.target.value) || 0)}
-        className="bg-background border border-border-subtle rounded px-3 py-1.5 focus:outline-none focus:border-primary text-white transition-colors"
+        className="bg-background border border-border-subtle rounded px-3 py-1.5 focus:outline-none focus:border-primary text-white transition-colors w-full min-w-0"
       />
     );
   }
@@ -414,7 +490,7 @@ function FieldValuePreview({ field, formValues, onChange }: { field: SheetField,
       type="text" 
       value={formValues[field.id] || ""} 
       onChange={e => onChange(e.target.value)}
-      className="bg-background border border-border-subtle rounded px-3 py-1.5 focus:outline-none focus:border-primary text-white transition-colors"
+      className="bg-background border border-border-subtle rounded px-3 py-1.5 focus:outline-none focus:border-primary text-white transition-colors w-full min-w-0"
     />
   );
 }
