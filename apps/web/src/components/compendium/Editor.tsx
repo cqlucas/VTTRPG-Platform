@@ -1,6 +1,7 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { Bold, Italic, Heading1, Heading2, Heading3, List, ListOrdered, Quote } from 'lucide-react'
 
 export interface EditorProps {
   initialContent: any
@@ -8,9 +9,6 @@ export interface EditorProps {
 }
 
 export function Editor({ initialContent, onChange }: EditorProps) {
-  // To avoid unnecesary re-renders due to Tiptap resetting cursor on prop change,
-  // we initialize it once and manually update it if the incoming ID/content changes drastically.
-  
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -21,7 +19,7 @@ export function Editor({ initialContent, onChange }: EditorProps) {
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-invert prose-sm sm:prose-base lg:prose-lg xl:prose-2xl focus:outline-none min-h-[300px]',
+        class: 'prose prose-invert prose-sm sm:prose-base focus:outline-none min-h-[300px] max-w-none leading-relaxed p-4',
       },
     },
   })
@@ -29,8 +27,7 @@ export function Editor({ initialContent, onChange }: EditorProps) {
   // Watch for external content updates (like selecting a different document)
   useEffect(() => {
     if (editor && initialContent) {
-      // Very naive check, in a real app you might compare JSON structure deeply or rely on a "key" prop on the Editor component
-      // Here, we just rely on the parent changing the `key` to remount the component.
+      // In a real app we might check if the content is truly different
     }
   }, [initialContent, editor])
 
@@ -39,34 +36,77 @@ export function Editor({ initialContent, onChange }: EditorProps) {
   }
 
   return (
-    <div className="border border-border-subtle rounded-md p-4 bg-surface-base">
-      <div className="flex gap-2 mb-4 border-b border-border-subtle pb-2 text-text-muted">
+    <div className="border border-border-subtle rounded-md bg-slate-900/50 flex flex-col overflow-hidden">
+      <div className="flex flex-wrap items-center gap-1 p-2 border-b border-border-subtle bg-surface-base text-text-muted">
         <button
           onClick={() => editor.chain().focus().toggleBold().run()}
-          className={`px-2 py-1 rounded ${editor.isActive('bold') ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating'}`}
+          className={`p-1.5 rounded transition-colors ${editor.isActive('bold') ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating hover:text-white'}`}
+          title="Negrito"
         >
-          <strong>B</strong>
+          <Bold className="w-4 h-4" />
         </button>
         <button
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={`px-2 py-1 rounded ${editor.isActive('italic') ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating'}`}
+          className={`p-1.5 rounded transition-colors ${editor.isActive('italic') ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating hover:text-white'}`}
+          title="Itálico"
         >
-          <em>I</em>
+          <Italic className="w-4 h-4" />
+        </button>
+        
+        <div className="w-px h-5 bg-border-subtle mx-1" />
+        
+        <button
+          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          className={`p-1.5 rounded transition-colors ${editor.isActive('heading', { level: 1 }) ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating hover:text-white'}`}
+          title="Título 1"
+        >
+          <Heading1 className="w-4 h-4" />
         </button>
         <button
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          className={`px-2 py-1 rounded ${editor.isActive('heading', { level: 2 }) ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating'}`}
+          className={`p-1.5 rounded transition-colors ${editor.isActive('heading', { level: 2 }) ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating hover:text-white'}`}
+          title="Título 2"
         >
-          H2
+          <Heading2 className="w-4 h-4" />
         </button>
         <button
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={`px-2 py-1 rounded ${editor.isActive('bulletList') ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating'}`}
+          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+          className={`p-1.5 rounded transition-colors ${editor.isActive('heading', { level: 3 }) ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating hover:text-white'}`}
+          title="Título 3"
         >
-          List
+          <Heading3 className="w-4 h-4" />
+        </button>
+        
+        <div className="w-px h-5 bg-border-subtle mx-1" />
+        
+        <button
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          className={`p-1.5 rounded transition-colors ${editor.isActive('bulletList') ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating hover:text-white'}`}
+          title="Lista com Marcadores"
+        >
+          <List className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          className={`p-1.5 rounded transition-colors ${editor.isActive('orderedList') ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating hover:text-white'}`}
+          title="Lista Numerada"
+        >
+          <ListOrdered className="w-4 h-4" />
+        </button>
+        
+        <div className="w-px h-5 bg-border-subtle mx-1" />
+        
+        <button
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          className={`p-1.5 rounded transition-colors ${editor.isActive('blockquote') ? 'bg-primary/20 text-white' : 'hover:bg-surface-floating hover:text-white'}`}
+          title="Citação (Blockquote)"
+        >
+          <Quote className="w-4 h-4" />
         </button>
       </div>
-      <EditorContent editor={editor} />
+      <div className="flex-1 bg-transparent">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   )
 }
