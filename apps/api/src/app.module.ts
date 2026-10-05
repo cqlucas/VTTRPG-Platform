@@ -4,6 +4,7 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { CampaignsModule } from "./campaigns/campaigns.module";
 import { SignalingModule } from "./signaling/signaling.module";
+import { UsersModule } from "./users/users.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 
 @Module({
@@ -12,6 +13,7 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
     AuthModule,
     CampaignsModule,
     SignalingModule,
+    UsersModule,
   ],
   providers: [
     // Apply JWT guard globally — use @Public() to exempt specific routes

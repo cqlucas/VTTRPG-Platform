@@ -5,15 +5,17 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { User, Mail, Lock, ArrowLeft, Save } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import { fetchApi } from "@/lib/api";
 import Link from "next/link";
 
 export default function EditProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const router = useRouter();
   
-  const [displayName, setDisplayName] = useState(user?.displayName || "");
-  const [username, setUsername] = useState(user?.username || "");
-  const [email, setEmail] = useState(user?.email || "");
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -22,12 +24,36 @@ export default function EditProfilePage() {
     e.preventDefault();
     setIsSaving(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSaving(false);
-      alert("Perfil atualizado com sucesso! (Simulado)");
+    try {
+      const payload: any = {};
+      if (displayName.trim()) payload.displayName = displayName;
+      if (username.trim()) payload.username = username;
+      if (email.trim()) payload.email = email;
+      if (avatarUrl.trim()) payload.avatarUrl = avatarUrl;
+      
+      if (newPassword) {
+        payload.currentPassword = currentPassword;
+        payload.newPassword = newPassword;
+      }
+      
+      // If nothing was changed, just return
+      if (Object.keys(payload).length === 0) {
+        router.push("/");
+        return;
+      }
+
+      const res = await fetchApi("/users/me", {
+        method: "PUT",
+        body: JSON.stringify(payload)
+      });
+      
+      updateUser(res.user);
       router.push("/");
-    }, 800);
+    } catch (err: any) {
+      alert("Erro ao atualizar o perfil: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!user) return null;
@@ -73,11 +99,10 @@ export default function EditProfilePage() {
                   </div>
                   <input 
                     type="text" 
-                    required
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     className="w-full bg-surface-dim border border-border-subtle rounded-md pl-10 pr-4 py-2.5 text-white placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-[14px]"
-                    placeholder="Seu nome"
+                    placeholder={user.displayName}
                   />
                 </div>
               </div>
@@ -90,11 +115,10 @@ export default function EditProfilePage() {
                   </div>
                   <input 
                     type="text" 
-                    required
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                     className="w-full bg-surface-dim border border-border-subtle rounded-md pl-10 pr-4 py-2.5 text-white placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-[14px]"
-                    placeholder="nome_de_usuario"
+                    placeholder={user.username}
                   />
                 </div>
                 <p className="text-[11px] text-text-muted mt-1">Apenas letras minúsculas, números e underlines (_).</p>
@@ -108,13 +132,29 @@ export default function EditProfilePage() {
                   </div>
                   <input 
                     type="email" 
-                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-surface-dim border border-border-subtle rounded-md pl-10 pr-4 py-2.5 text-white placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-[14px]"
-                    placeholder="seu@email.com"
+                    placeholder={user.email}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[13px] text-text-muted mb-1.5 font-medium">Link da Foto de Perfil (Avatar)</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input 
+                    type="url" 
+                    value={avatarUrl}
+                    onChange={(e) => setAvatarUrl(e.target.value)}
+                    className="w-full bg-surface-dim border border-border-subtle rounded-md pl-10 pr-4 py-2.5 text-white placeholder:text-text-muted/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-[14px]"
+                    placeholder={user.avatarUrl || "https://exemplo.com/sua-foto.jpg"}
+                  />
+                </div>
+                <p className="text-[11px] text-text-muted mt-1">Cole a URL de uma imagem. Se deixado em branco, mostraremos suas iniciais.</p>
               </div>
             </div>
 
