@@ -48,8 +48,8 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   const [openMenuPeer, setOpenMenuPeer] = useState<string | null>(null);
   const [isTargetDropdownOpen, setIsTargetDropdownOpen] = useState(false);
   
-  // -- NEW MOCKED STATES --
-  const isDM = true; // TODO: Mocked state for DM
+  // -- REAL STATES --
+  const isDM = campaign?.ownerId === user?.id;
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"nodes" | "compendium" | "ficha">("nodes");
   const [isCompendiumPopped, setIsCompendiumPopped] = useState(false);
