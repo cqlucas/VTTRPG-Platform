@@ -46,9 +46,15 @@ export function StorageSyncSection() {
 
   const handleRequestPermission = async () => {
     if (!handle) return;
-    const perm = await requestDirPermission(handle);
-    if (perm === "granted") {
-      setNeedsPermission(false);
+    try {
+      const perm = await requestDirPermission(handle);
+      if (perm === "granted") {
+        setNeedsPermission(false);
+      } else {
+        alert("Permissão não concedida. Se o navegador bloqueou, você precisará clicar em 'Mudar Pasta' e selecioná-la novamente.");
+      }
+    } catch (e: any) {
+      alert("Erro ao pedir permissão: " + (e.message || "desconhecido"));
     }
   };
 
