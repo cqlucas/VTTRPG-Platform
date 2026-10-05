@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { FileText, MoreVertical, PlusCircle, Save, Trash2, Edit2, Play, Settings, Plus } from "lucide-react";
+import { FileText, MoreVertical, PlusCircle, Save, Trash2, Edit2, Play, Settings, Plus, HelpCircle, X } from "lucide-react";
 import { SheetTemplatesRepository, type SheetTemplate, type SheetTab, type SheetGroup, type SheetField } from "@questdreamer/local-db";
 import { useLiveQuery } from "../../lib/useLiveQuery";
 import { evaluateFormula } from "../../lib/formula";
@@ -78,6 +78,7 @@ export function SistemasTab() {
 
 function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack: () => void }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [template, setTemplate] = useState<SheetTemplate | null>(null);
   
   // Sheet mock values state for preview (View Mode)
@@ -256,13 +257,18 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
                               />
                             </div>
                             {field.type === "calculated" && (
-                              <input 
-                                type="text" 
-                                value={field.formula || ""} 
-                                onChange={e => handleUpdateField(tIdx, gIdx, fIdx, {...field, formula: e.target.value})} 
-                                className="bg-indigo-950/50 border border-indigo-500/50 rounded px-2 py-1 text-[12px] text-indigo-200 font-mono" 
-                                placeholder="Fórmula ex: floor((str-10)/2)"
-                              />
+                              <div className="flex items-center gap-1">
+                                <input 
+                                  type="text" 
+                                  value={field.formula || ""} 
+                                  onChange={e => handleUpdateField(tIdx, gIdx, fIdx, {...field, formula: e.target.value})} 
+                                  className="bg-indigo-950/50 border border-indigo-500/50 rounded px-2 py-1 text-[12px] text-indigo-200 font-mono flex-1" 
+                                  placeholder="Fórmula ex: floor((str-10)/2)"
+                                />
+                                <button type="button" onClick={() => setIsHelpOpen(true)} className="p-1.5 rounded bg-surface-dim hover:bg-surface-bright text-text-muted hover:text-secondary transition-colors" title="Como usar fórmulas?">
+                                  <HelpCircle className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             )}
                             <button onClick={() => handleDeleteField(tIdx, gIdx, fIdx)} className="text-[10px] text-danger mt-1 text-left hover:underline">Remover Campo</button>
                           </div>
@@ -290,6 +296,57 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
           ))}
         </div>
       </div>
+
+      {isHelpOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface-base border border-border-subtle rounded-lg shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-border-subtle bg-surface-dim">
+              <h3 className="text-[14px] font-bold text-white flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-secondary" /> 
+                Como usar Fórmulas
+              </h3>
+              <button onClick={() => setIsHelpOpen(false)} className="text-text-muted hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 text-[13px] text-text-muted flex flex-col gap-4 overflow-y-auto max-h-[70vh]">
+              <p>
+                Os campos do tipo <strong>Calculado</strong> avaliam expressões matemáticas simples em tempo real, baseadas nos valores de outros campos.
+              </p>
+              
+              <div className="bg-surface-dim p-3 rounded border border-border-subtle">
+                <h4 className="font-bold text-white mb-2">Referenciando Campos</h4>
+                <p>
+                  Para usar o valor de outro campo, basta escrever o <strong>ID do campo</strong> na fórmula. Por exemplo, se você tem um campo "Força" com ID <code>str</code>, escreva <code>str</code>.
+                </p>
+              </div>
+
+              <div className="bg-surface-dim p-3 rounded border border-border-subtle">
+                <h4 className="font-bold text-white mb-2">Funções e Operadores</h4>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li><strong>Operadores:</strong> <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code></li>
+                  <li><strong>Arredondamentos:</strong> <code>floor()</code> (para baixo), <code>ceil()</code> (para cima), <code>round()</code> (mais próximo)</li>
+                  <li><strong>Outros:</strong> <code>abs()</code>, <code>max(a, b)</code>, <code>min(a, b)</code></li>
+                </ul>
+              </div>
+
+              <div className="bg-surface-dim p-3 rounded border border-border-subtle">
+                <h4 className="font-bold text-white mb-2">Exemplos</h4>
+                <ul className="space-y-2">
+                  <li>Modificador de atributo: <code className="text-indigo-300">floor((str - 10) / 2)</code></li>
+                  <li>Iniciativa total: <code className="text-indigo-300">dex_mod + prof_bonus</code></li>
+                  <li>Dano com arma: <code className="text-indigo-300">floor(str / 2) + 1</code></li>
+                </ul>
+              </div>
+            </div>
+            <div className="p-4 border-t border-border-subtle bg-surface-dim flex justify-end">
+              <button onClick={() => setIsHelpOpen(false)} className="bg-secondary hover:bg-secondary/90 text-background px-4 py-2 rounded text-[13px] font-medium transition-colors">
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
