@@ -8,6 +8,7 @@ import { Hexagon, Users, Plus, Search, Shield, Bell, LogOut, LayoutGrid, User, L
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import { LibraryContent } from "@/components/LibraryContent";
+import { StorageSyncSection } from "@/components/settings/StorageSyncSection";
 
 export default function DashboardPage() {
   const [inviteCode, setInviteCode] = useState("");
@@ -369,17 +370,8 @@ export default function DashboardPage() {
                 </select>
               </div>
 
-              {/* Path Option */}
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-white">Diretório Local (Assets & Documentos)</label>
-                <p className="text-[11px] text-text-muted">Caminho padrão no seu PC para salvar/ler arquivos de mapas, tokens e PDFs gerados pela plataforma.</p>
-                <input 
-                  type="text" 
-                  value={savePath}
-                  onChange={(e) => setSavePath(e.target.value)}
-                  placeholder="C:\Users\SeuUsuario\Documents\VTTRPG"
-                  className="w-full font-telemetry bg-surface-dim border border-border-subtle rounded px-3 py-2.5 focus:outline-none focus:border-primary transition-colors text-white placeholder:text-text-muted/50 text-[13px]"
-                />
+              <div className="pt-4 border-t border-border-subtle">
+                <StorageSyncSection />
               </div>
             </div>
 
