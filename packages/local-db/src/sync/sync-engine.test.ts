@@ -35,7 +35,7 @@ describe("SyncEngine", () => {
 
     const manifestRaw = await adapter.readManifest();
     expect(manifestRaw).toBeTruthy();
-    const manifest = parseManifest(manifestRaw!).value as any;
+    const manifest = (parseManifest(manifestRaw!) as any).value;
     expect(manifest.entries.length).toBe(1);
 
     const tree = await repo.listTree();
@@ -78,7 +78,7 @@ describe("SyncEngine", () => {
     expect(res.pulled).toBe(0);
 
     const raw = await adapter.readEntry(`lore/documents/${doc.id}.json`);
-    const parsed = parseDocumentFile(raw!, doc.id).value as any;
+    const parsed = (parseDocumentFile(raw!, doc.id) as any).value;
     expect(parsed.title).toBe("Doc Edited");
   });
 
@@ -171,7 +171,7 @@ describe("SyncEngine", () => {
     expect(adapter.files.has(MANIFEST_PATH)).toBe(true);
     
     const manifestRaw = await adapter.readManifest();
-    const manifest = parseManifest(manifestRaw!).value as any;
+    const manifest = (parseManifest(manifestRaw!) as any).value;
     expect(manifest.entries.length).toBe(1);
     expect(manifest.entries[0].id).toBe(doc.id);
   });
