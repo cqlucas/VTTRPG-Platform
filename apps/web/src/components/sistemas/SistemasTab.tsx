@@ -139,6 +139,23 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
     saveTemplate({ ...template, tabs: newTabs });
   };
 
+  const handleAddTab = () => {
+    const newTabs = [...template.tabs];
+    newTabs.push({
+      id: `tab_${Date.now()}`,
+      name: "Nova Aba",
+      groups: []
+    });
+    saveTemplate({ ...template, tabs: newTabs });
+  };
+
+  const handleDeleteTab = (tabIndex: number) => {
+    const newTabs = [...template.tabs];
+    newTabs.splice(tabIndex, 1);
+    saveTemplate({ ...template, tabs: newTabs });
+  };
+
+
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col gap-6 h-full pb-8">
       {/* Header */}
@@ -189,14 +206,20 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
         <div className="bg-surface-base border border-border-subtle rounded-lg p-6 max-w-4xl mx-auto flex flex-col gap-8 shadow-sm">
           {template.tabs.map((tab, tIdx) => (
             <div key={tab.id} className="flex flex-col gap-4">
-              <h3 className="text-[16px] font-bold text-white border-b border-border-subtle pb-2">
+              <h3 className="text-[16px] font-bold text-white border-b border-border-subtle pb-2 flex justify-between items-center">
                 {isEditing ? (
                   <input type="text" value={tab.name} onChange={e => {
                     const newTabs = [...template.tabs];
                     newTabs[tIdx].name = e.target.value;
                     saveTemplate({...template, tabs: newTabs});
-                  }} className="bg-transparent focus:outline-none border-b border-dashed border-border-subtle" />
+                  }} className="bg-transparent focus:outline-none border-b border-dashed border-border-subtle flex-1" />
                 ) : tab.name}
+                
+                {isEditing && template.tabs.length > 1 && (
+                  <button onClick={() => handleDeleteTab(tIdx)} className="p-1 text-text-muted hover:text-danger rounded hover:bg-danger/10 transition-colors ml-2" title="Excluir Aba">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </h3>
 
               {tab.groups.map((group, gIdx) => (
@@ -294,6 +317,14 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
               )}
             </div>
           ))}
+
+          {isEditing && (
+            <div className="pt-4 border-t border-border-subtle mt-4">
+              <button onClick={handleAddTab} className="bg-surface-dim hover:bg-surface-bright text-text-muted hover:text-white px-4 py-3 rounded-lg border border-dashed border-border-subtle flex items-center justify-center gap-2 w-full transition-colors font-medium">
+                <PlusCircle className="w-5 h-5" /> Adicionar Nova Aba
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
