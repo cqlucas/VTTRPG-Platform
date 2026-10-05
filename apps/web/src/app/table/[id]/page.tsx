@@ -430,39 +430,6 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
                       <div className="font-medium text-white">{user.displayName} (You)</div>
                     </div>
                   </div>
-                  
-                  {/* Hover Actions */}
-                  <div className="flex items-center gap-1.5">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenMenuPeer(openMenuPeer === "self" ? null : "self");
-                      }}
-                      className="hidden group-hover:flex items-center justify-center p-1 rounded hover:bg-surface-base text-text-muted hover:text-white transition-colors"
-                    >
-                      <MoreVertical className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  
-                  {/* Dropdown Menu */}
-                  {openMenuPeer === "self" && (
-                    <div className="absolute right-2 top-10 z-50 w-40 bg-surface-base border border-border-subtle rounded shadow-xl py-1 overflow-hidden">
-                      {!isDM && (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFichaTargetName(user.displayName);
-                            setIsFichaPopped(true);
-                            setOpenMenuPeer(null);
-                          }}
-                          className="w-full text-left px-3 py-2 text-[12px] text-text-muted hover:text-white hover:bg-surface-bright transition-colors flex items-center gap-2"
-                        >
-                          <FileText className="w-3.5 h-3.5" /> 
-                          Visualizar Ficha
-                        </button>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
               
