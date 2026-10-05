@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Hexagon, Users, Plus, Search, Shield, Bell, LogOut, LayoutGrid, User, Library } from "lucide-react";
+import { Hexagon, Users, Plus, Search, Shield, Bell, LogOut, LayoutGrid, User, Library, Settings, X } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import { LibraryContent } from "@/components/LibraryContent";
@@ -14,8 +14,24 @@ export default function DashboardPage() {
   const [myTables, setMyTables] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("campanhas");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState("dark");
+  const [savePath, setSavePath] = useState("C:\\Users\\SeuUsuario\\Documents\\VTTRPG");
   const { user, logout } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("vtt_theme") || "dark";
+    const savedPath = localStorage.getItem("vtt_save_path") || "C:\\Users\\SeuUsuario\\Documents\\VTTRPG";
+    setTheme(savedTheme);
+    setSavePath(savedPath);
+  }, []);
+
+  const saveSettings = () => {
+    localStorage.setItem("vtt_theme", theme);
+    localStorage.setItem("vtt_save_path", savePath);
+    setIsSettingsOpen(false);
+  };
 
   useEffect(() => {
     async function loadCampaigns() {
@@ -111,12 +127,15 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <div className="p-4 border-t border-border-subtle layer-1-well m-4 rounded flex items-center gap-3">
+        <div className="p-4 border-t border-border-subtle layer-1-well m-4 rounded flex items-center gap-2">
+          <button onClick={() => setIsSettingsOpen(true)} title="Configurações" className="text-text-muted hover:text-white transition-colors p-2 rounded hover:bg-surface-base flex-shrink-0">
+            <Settings className="w-4 h-4" />
+          </button>
           <button onClick={logout} title="Sair" className="text-text-muted hover:text-danger transition-colors p-2 rounded hover:bg-surface-base flex-shrink-0">
             <LogOut className="w-4 h-4" />
           </button>
           
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-1 min-w-0 pl-1">
             <div className="w-8 h-8 flex-shrink-0 rounded-full bg-surface-base border border-secondary/50 flex items-center justify-center font-telemetry text-secondary text-xs uppercase overflow-hidden">
               {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover" /> : user.username.slice(0, 2)}
             </div>
@@ -314,6 +333,73 @@ export default function DashboardPage() {
 
         </div>
       </main>
+
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md bg-surface-base border border-border-subtle rounded-lg shadow-2xl overflow-hidden flex flex-col"
+          >
+            <div className="p-4 border-b border-border-subtle flex items-center justify-between bg-surface-dim">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Settings className="w-5 h-5 text-primary" />
+                Configurações
+              </h2>
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="p-1.5 rounded-md text-text-muted hover:text-white hover:bg-surface-base transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-6 flex flex-col gap-6">
+              {/* Theme Option */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-white">Tema da Interface</label>
+                <select 
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  className="w-full bg-surface-dim border border-border-subtle rounded px-3 py-2.5 focus:outline-none focus:border-primary transition-colors text-white text-[13px]"
+                >
+                  <option value="dark">Escuro (Dark Mode)</option>
+                  <option value="light">Claro (Light Mode)</option>
+                </select>
+              </div>
+
+              {/* Path Option */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-white">Diretório Local (Assets & Documentos)</label>
+                <p className="text-[11px] text-text-muted">Caminho padrão no seu PC para salvar/ler arquivos de mapas, tokens e PDFs gerados pela plataforma.</p>
+                <input 
+                  type="text" 
+                  value={savePath}
+                  onChange={(e) => setSavePath(e.target.value)}
+                  placeholder="C:\Users\SeuUsuario\Documents\VTTRPG"
+                  className="w-full font-telemetry bg-surface-dim border border-border-subtle rounded px-3 py-2.5 focus:outline-none focus:border-primary transition-colors text-white placeholder:text-text-muted/50 text-[13px]"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-border-subtle bg-surface-dim flex justify-end gap-3">
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="px-4 py-2 rounded text-[13px] font-medium text-text-muted hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={saveSettings}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-2 rounded text-[13px] font-medium transition-colors"
+              >
+                Salvar Alterações
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
