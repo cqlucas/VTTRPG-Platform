@@ -394,9 +394,10 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         <div className="hidden md:flex items-center border-b border-border-subtle bg-surface-base">
           <button 
             onClick={() => setSidebarTab("nodes")}
-            className={`flex-1 py-2 text-[11px] font-telemetry uppercase tracking-wider transition-colors ${sidebarTab === "nodes" ? "text-primary border-b-2 border-primary bg-primary/5" : "text-text-muted hover:text-white hover:bg-surface-bright"}`}
+            className={`flex-1 flex justify-center py-2.5 transition-colors ${sidebarTab === "nodes" ? "text-primary border-b-2 border-primary bg-primary/5" : "text-text-muted hover:text-white hover:bg-surface-bright"}`}
+            title="Nós (Jogadores)"
           >
-            [ Nós ]
+            <Users className="w-4 h-4" />
           </button>
           <button 
             onClick={() => {
@@ -404,9 +405,10 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
               if (isDM) setIsCompendiumPopped(false);
               else setIsFichaPopped(false);
             }}
-            className={`flex-1 py-2 text-[11px] font-telemetry uppercase tracking-wider transition-colors ${sidebarTab === (isDM ? "compendium" : "ficha") ? "text-secondary border-b-2 border-secondary bg-secondary/5" : "text-text-muted hover:text-white hover:bg-surface-bright"}`}
+            className={`flex-1 flex justify-center py-2.5 transition-colors ${sidebarTab === (isDM ? "compendium" : "ficha") ? "text-secondary border-b-2 border-secondary bg-secondary/5" : "text-text-muted hover:text-white hover:bg-surface-bright"}`}
+            title={isDM ? "Compêndio" : "Sua Ficha"}
           >
-            {isDM ? "[ Compêndio ]" : "[ Ficha ]"}
+            {isDM ? <Book className="w-4 h-4" /> : <FileBox className="w-4 h-4" />}
           </button>
         </div>
 
