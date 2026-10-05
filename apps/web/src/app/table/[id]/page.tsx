@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, use, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, MessageSquare, Users, Settings, Dices, Send, Shield, Hexagon, Activity, MoreVertical, Mail, Book, FileText, Maximize2, Minimize2, Save, FileBox } from "lucide-react";
+import { ArrowLeft, MessageSquare, Users, Settings, Dices, Send, Shield, Hexagon, Activity, MoreVertical, Mail, Book, FileText, Maximize2, Minimize2, Save, FileBox, Copy } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { fetchApi } from "@/lib/api";
 import { parseDiceExpression, rollExpression, type ParsedDiceExpression } from "@/lib/dice";
@@ -55,6 +55,29 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   const [isCompendiumPopped, setIsCompendiumPopped] = useState(false);
   const [isFichaPopped, setIsFichaPopped] = useState(false);
   const [fichaTargetName, setFichaTargetName] = useState<string>("");
+  const [isSettingsSaving, setIsSettingsSaving] = useState(false);
+  
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!campaign) return;
+    setIsSettingsSaving(true);
+    const form = e.target as HTMLFormElement;
+    const name = (form.elements.namedItem("name") as HTMLInputElement).value;
+    const isPublic = (form.elements.namedItem("isPublic") as HTMLSelectElement).value === "true";
+    
+    try {
+      const updated = await fetchApi(`/campaigns/${campaignId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name, isPublic })
+      });
+      setCampaign(updated);
+      setIsSettingsOpen(false);
+    } catch (err: any) {
+      alert("Erro ao salvar: " + err.message);
+    } finally {
+      setIsSettingsSaving(false);
+    }
+  };
   
   const closeDice = useCallback(() => setIsDiceOpen(false), []);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -705,23 +728,32 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
         onClose={() => setIsSettingsOpen(false)}
         width={400}
       >
-        <div className="p-4 flex flex-col gap-4">
+        <form onSubmit={handleSaveSettings} className="p-4 flex flex-col gap-4">
+          <div>
+            <label className="block text-[11px] font-telemetry uppercase text-text-muted mb-1">ID da Mesa (Para Convites)</label>
+            <div className="flex items-center relative">
+              <input type="text" readOnly className="w-full bg-surface-container border border-border-subtle rounded px-3 py-2 text-text-muted text-[13px] font-telemetry pr-10 cursor-not-allowed select-all" value={campaignId} />
+              <button type="button" onClick={() => navigator.clipboard.writeText(campaignId)} className="absolute right-2 p-1.5 text-text-muted hover:text-white transition-colors" title="Copiar ID">
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
           <div>
             <label className="block text-[11px] font-telemetry uppercase text-text-muted mb-1">Nome da Mesa</label>
-            <input type="text" className="w-full bg-background border border-border-subtle rounded px-3 py-2 text-white text-[13px]" defaultValue={campaign?.name || "Mesa de RPG"} />
+            <input name="name" type="text" className="w-full bg-background border border-border-subtle rounded px-3 py-2 text-white text-[13px]" defaultValue={campaign?.name || "Mesa de RPG"} />
           </div>
           <div>
             <label className="block text-[11px] font-telemetry uppercase text-text-muted mb-1">Visibilidade</label>
-            <select className="w-full bg-background border border-border-subtle rounded px-3 py-2 text-white text-[13px]">
-              <option>Privada</option>
-              <option>Pública</option>
+            <select name="isPublic" className="w-full bg-background border border-border-subtle rounded px-3 py-2 text-white text-[13px]" defaultValue={campaign?.isPublic ? "true" : "false"}>
+              <option value="false">Privada</option>
+              <option value="true">Pública</option>
             </select>
           </div>
-          <button className="bg-primary hover:brightness-110 text-background font-semibold text-[13px] py-2 rounded transition-colors flex items-center justify-center gap-2 mt-2">
+          <button type="submit" disabled={isSettingsSaving} className="bg-primary hover:brightness-110 text-background font-semibold text-[13px] py-2 rounded transition-colors flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
             <Save className="w-4 h-4" />
-            Salvar Configurações
+            {isSettingsSaving ? "Salvando..." : "Salvar Configurações"}
           </button>
-        </div>
+        </form>
       </DraggableModal>
 
       <DraggableModal 
