@@ -109,7 +109,7 @@ export interface LocalAsset {
   createdAt: number;
 }
 
-export type FieldType = "text" | "int" | "float" | "calculated";
+export type FieldType = "text" | "int" | "float" | "calculated" | "checkbox";
 
 export interface SheetField {
   id: string; // unique internal ID, e.g. "str"

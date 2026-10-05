@@ -69,13 +69,15 @@ export function SistemasTab() {
       
       const mappedFields: SheetField[] = fields.map((f, idx) => {
          const name = f.getName() || `field_${idx}`;
-         let type: "text" | "int" | "float" = "text";
+         let type: "text" | "int" | "float" | "checkbox" = "text";
          try {
            if (f.constructor.name.includes("PDFTextField")) {
              const text = (f as any).getText() || "";
              if (text && !isNaN(Number(text))) {
                type = text.includes('.') ? "float" : "int";
              }
+           } else if (f.constructor.name.includes("PDFCheckBox")) {
+             type = "checkbox";
            }
          } catch(err) {}
          
@@ -577,6 +579,7 @@ function SheetTemplateView({ templateId, onBack, forceEdit = false }: { template
                                 <option value="int">Inteiro</option>
                                 <option value="float">Decimal</option>
                                 <option value="calculated">Calculado</option>
+                                <option value="checkbox">Caixa de Seleção</option>
                               </select>
                               <input 
                                 type="text" 
@@ -740,12 +743,26 @@ function FieldValuePreview({ field, formValues, onChange }: { field: SheetField,
     const context: Record<string, number> = {};
     for (const [k, v] of Object.entries(formValues)) {
       if (typeof v === 'number') context[k] = v;
+      else if (typeof v === 'boolean') context[k] = v ? 1 : 0;
       else if (!isNaN(Number(v))) context[k] = Number(v);
     }
     const val = evaluateFormula(field.formula || "", context);
     return (
       <div className="bg-surface-base border border-border-subtle rounded px-3 py-1.5 text-white font-mono flex items-center h-[34px] w-full overflow-hidden text-ellipsis whitespace-nowrap">
         {val}
+      </div>
+    );
+  }
+
+  if (field.type === "checkbox") {
+    return (
+      <div className="flex items-center h-[34px] px-2 w-full">
+        <input 
+          type="checkbox" 
+          checked={!!formValues[field.id]} 
+          onChange={e => onChange(e.target.checked)}
+          className="w-5 h-5 accent-primary bg-surface-dim border-border-subtle rounded cursor-pointer"
+        />
       </div>
     );
   }
