@@ -109,6 +109,34 @@ export interface LocalAsset {
   createdAt: number;
 }
 
+export type FieldType = "text" | "int" | "float" | "calculated";
+
+export interface SheetField {
+  id: string; // unique internal ID, e.g. "str"
+  label: string; // Display label
+  type: FieldType;
+  formula?: string; // Expression for calculated fields
+}
+
+export interface SheetGroup {
+  id: string;
+  title?: string; // Optional title for the group
+  fields: SheetField[];
+}
+
+export interface SheetTab {
+  id: string;
+  name: string;
+  groups: SheetGroup[];
+}
+
+export interface SheetTemplate extends SyncMeta {
+  campaignId?: string | null;
+  title: string;
+  description: string;
+  tabs: SheetTab[];
+}
+
 /** Link between this browser profile and a folder on the user's disk. */
 export interface SyncLink {
   id: "default";
@@ -143,6 +171,7 @@ export class QuestDreamerLocalDB extends Dexie {
   folders!: EntityTable<LocalFolder, "id">;
   loreNodes!: EntityTable<LoreDocument, "id">;
   assets!: EntityTable<LocalAsset, "id">;
+  sheetTemplates!: EntityTable<SheetTemplate, "id">;
   syncLinks!: EntityTable<SyncLink, "id">;
   syncBaselines!: EntityTable<SyncBaseline, "entryId">;
   kv!: EntityTable<KeyValue, "key">;
@@ -172,6 +201,19 @@ export class QuestDreamerLocalDB extends Dexie {
         kv: "key",
       })
       .upgrade(migrateToV2);
+
+    this.version(3)
+      .stores({
+        campaigns: "id",
+        characters: "id, campaignId, folderId, ownerId",
+        folders: "id, campaignId, parentId, type",
+        loreNodes: "id, campaignId, folderId, authorId, nodeType",
+        assets: "id, campaignId, mimeType",
+        sheetTemplates: "id, campaignId",
+        syncLinks: "id",
+        syncBaselines: "entryId",
+        kv: "key",
+      });
   }
 }
 
