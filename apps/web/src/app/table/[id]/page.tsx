@@ -9,6 +9,7 @@ import { parseDiceExpression, rollExpression, type ParsedDiceExpression } from "
 import { DiceRollerWindow } from "@/components/dice/DiceRollerWindow";
 import { DiceRollCard } from "@/components/dice/DiceRollCard";
 import { DraggableModal } from "@/components/DraggableModal";
+import { Board } from "@/components/board/Board";
 import { SignalingClient, PeerConnectionManager } from "@questdreamer/webrtc";
 import type { ChatMessage, DataChannelMessage, DiceRoll } from "@questdreamer/types";
 
@@ -582,19 +583,8 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
       </aside>
 
       {/* Center Canvas Area (Layer 0 & 1) */}
-      <main className="flex-1 relative bg-background">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center opacity-30">
-            <div className="w-64 h-64 border border-border-subtle rounded-full flex items-center justify-center mb-4 mx-auto layer-1-well relative">
-              <Activity className="w-16 h-16 text-text-muted absolute animate-pulse" />
-            </div>
-            <p className="font-telemetry text-text-muted">AWAITING_SCENE_DATA...</p>
-          </div>
-        </div>
-        
-        {/* Grid Overlay Placeholder */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" 
-             style={{ backgroundImage: 'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
+      <main className="flex-1 relative bg-background z-0">
+        <Board isDM={isDM} />
       </main>
 
       {/* Right Sidebar - Chat & Log (Layer 2) */}
