@@ -80,6 +80,7 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
   const [isEditing, setIsEditing] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [template, setTemplate] = useState<SheetTemplate | null>(null);
+  const [backupTemplate, setBackupTemplate] = useState<SheetTemplate | null>(null);
   
   // Drag and drop states
   const [dragSource, setDragSource] = useState<{tab: number, group: number} | null>(null);
@@ -96,13 +97,32 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
 
   if (!template) return <div>Carregando...</div>;
 
-  const saveTemplate = async (updated: SheetTemplate) => {
+  const saveTemplate = (updated: SheetTemplate) => {
     setTemplate(updated);
-    await SheetTemplatesRepository.updateTemplate(updated.id, {
-      title: updated.title,
-      description: updated.description,
-      tabs: updated.tabs
+  };
+
+  const startEditing = () => {
+    if (template) setBackupTemplate(JSON.parse(JSON.stringify(template)));
+    setIsEditing(true);
+  };
+
+  const commitChanges = async () => {
+    if (!template) return;
+    await SheetTemplatesRepository.updateTemplate(template.id, {
+      title: template.title,
+      description: template.description,
+      tabs: template.tabs
     });
+    setBackupTemplate(null);
+    setIsEditing(false);
+  };
+
+  const cancelChanges = () => {
+    if (backupTemplate) {
+      setTemplate(backupTemplate);
+    }
+    setBackupTemplate(null);
+    setIsEditing(false);
   };
 
   const handleUpdateField = (tabIndex: number, groupIndex: number, fieldIndex: number, newField: SheetField) => {
@@ -231,12 +251,29 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
         </div>
         
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setIsEditing(!isEditing)}
-            className={`${isEditing ? 'bg-success hover:bg-success/90' : 'bg-primary hover:bg-primary/90'} text-primary-foreground px-4 py-2 rounded text-[12px] font-medium transition-colors flex items-center gap-2`}
-          >
-            {isEditing ? <><Play className="w-4 h-4" /> Finalizar Edição</> : <><Edit2 className="w-4 h-4" /> Editar Estrutura</>}
-          </button>
+          {isEditing ? (
+            <>
+              <button 
+                onClick={cancelChanges}
+                className="bg-transparent border border-border-subtle hover:bg-surface-dim text-text-muted hover:text-white px-4 py-2 rounded text-[12px] font-medium transition-colors flex items-center gap-2"
+              >
+                <X className="w-4 h-4" /> Cancelar
+              </button>
+              <button 
+                onClick={commitChanges}
+                className="bg-success hover:bg-success/90 text-primary-foreground px-4 py-2 rounded text-[12px] font-medium transition-colors flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" /> Finalizar Edição
+              </button>
+            </>
+          ) : (
+            <button 
+              onClick={startEditing}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded text-[12px] font-medium transition-colors flex items-center gap-2"
+            >
+              <Edit2 className="w-4 h-4" /> Editar Estrutura
+            </button>
+          )}
         </div>
       </div>
 
@@ -264,6 +301,7 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
                 {tab.groups.map((group, gIdx) => {
                   const w = group.width || 1;
                   const colSpanClass = w === 3 ? "col-span-1 md:col-span-2 lg:col-span-3" : w === 2 ? "col-span-1 md:col-span-2" : "col-span-1";
+                  const fieldsGridClass = w === 1 ? "grid-cols-1" : w === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
                   const isDraggingThis = dragSource?.tab === tIdx && dragSource?.group === gIdx;
                   const isDragOver = dragTarget?.tab === tIdx && dragTarget?.group === gIdx;
 
@@ -318,7 +356,7 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
                     </div>
                   ) : null}
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className={`grid gap-4 ${fieldsGridClass}`}>
                     {group.fields.map((field, fIdx) => (
                       <div key={field.id} className="flex flex-col gap-1 relative group/field">
                         <label className="text-[11px] font-medium text-text-muted flex justify-between">
@@ -377,7 +415,7 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
                     ))}
                     
                     {isEditing && (
-                      <button onClick={() => handleAddField(tIdx, gIdx)} className="border border-dashed border-border-subtle rounded flex items-center justify-center p-3 text-text-muted hover:text-white hover:bg-surface-base transition-colors h-full min-h-[60px] col-span-2 md:col-span-3">
+                      <button onClick={() => handleAddField(tIdx, gIdx)} className="border border-dashed border-border-subtle rounded flex items-center justify-center p-3 text-text-muted hover:text-white hover:bg-surface-base transition-colors h-full min-h-[60px] col-span-full">
                         <Plus className="w-4 h-4" /> Adicionar Campo
                       </button>
                     )}
