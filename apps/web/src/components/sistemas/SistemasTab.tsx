@@ -1,12 +1,20 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { FileText, MoreVertical, PlusCircle, Save, Trash2, Edit2, Play, Settings, Plus, HelpCircle, X, GripVertical } from "lucide-react";
+import { FileText, MoreVertical, PlusCircle, Save, Trash2, Edit2, Play, Settings, Plus, HelpCircle, X, GripVertical, Download, Upload, Copy, Check } from "lucide-react";
+import { PDFDocument } from "pdf-lib";
 import { SheetTemplatesRepository, type SheetTemplate, type SheetTab, type SheetGroup, type SheetField } from "@questdreamer/local-db";
 import { useLiveQuery } from "../../lib/useLiveQuery";
 import { evaluateFormula } from "../../lib/formula";
 
 export function SistemasTab() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [forceEditMode, setForceEditMode] = useState(false);
+  
+  // Import states
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importTab, setImportTab] = useState<"json" | "pdf">("json");
+  const [jsonInput, setJsonInput] = useState("");
+  const [importError, setImportError] = useState("");
   
   const templates = useLiveQuery(() => SheetTemplatesRepository.listTemplates(), []) || [];
 
@@ -19,21 +27,114 @@ export function SistemasTab() {
     setSelectedTemplateId(newTpl.id);
   };
 
+  const handleImportJson = async () => {
+    try {
+      setImportError("");
+      const data = JSON.parse(jsonInput);
+      if (!data.title || !Array.isArray(data.tabs)) throw new Error("JSON inválido: Estrutura incompatível.");
+      
+      const newTpl = await SheetTemplatesRepository.createTemplate({
+        title: data.title,
+        description: data.description || "",
+        tabs: data.tabs
+      });
+      setIsImportOpen(false);
+      setForceEditMode(false);
+      setSelectedTemplateId(newTpl.id);
+    } catch (e: any) {
+      setImportError(e.message);
+    }
+  };
+
+  const handleFileUploadJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setJsonInput(ev.target?.result as string);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setImportError("Lendo PDF...");
+      
+      const buffer = await file.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(buffer);
+      const form = pdfDoc.getForm();
+      const fields = form.getFields();
+      
+      const mappedFields: SheetField[] = fields.map((f, idx) => {
+         const name = f.getName() || `field_${idx}`;
+         let type: "text" | "int" | "float" = "text";
+         try {
+           if (f.constructor.name.includes("PDFTextField")) {
+             const text = (f as any).getText() || "";
+             if (text && !isNaN(Number(text))) {
+               type = text.includes('.') ? "float" : "int";
+             }
+           }
+         } catch(err) {}
+         
+         const safeId = name.replace(/[^a-zA-Z0-9_]/g, '');
+         return {
+           id: safeId || `f_${idx}`,
+           label: name,
+           type,
+           readonlyId: true
+         };
+      });
+
+      const newTpl = await SheetTemplatesRepository.createTemplate({
+        title: file.name.replace('.pdf', ''),
+        description: "Importado via extração de PDF. Organize os campos nas abas e grupos.",
+        tabs: [{
+          id: "tab-raw",
+          name: "Importação Bruta",
+          groups: [{
+            id: "group-raw",
+            title: "Campos do PDF",
+            width: 3,
+            fields: mappedFields
+          }]
+        }]
+      });
+      
+      setIsImportOpen(false);
+      setForceEditMode(true);
+      setSelectedTemplateId(newTpl.id);
+    } catch(e: any) {
+      setImportError(e.message || "Erro ao ler PDF.");
+    }
+  };
+
   if (selectedTemplateId) {
-    return <SheetTemplateView templateId={selectedTemplateId} onBack={() => setSelectedTemplateId(null)} />;
+    return <SheetTemplateView templateId={selectedTemplateId} forceEdit={forceEditMode} onBack={() => { setSelectedTemplateId(null); setForceEditMode(false); }} />;
   }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-6 pb-8 overflow-y-auto h-full">
       <div className="flex justify-between items-center">
         <p className="text-text-muted text-[13px]">Gerencie seus modelos de fichas e estatísticas.</p>
-        <button 
-          onClick={handleCreateNew}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md font-medium text-[13px] transition-colors flex items-center gap-2"
-        >
-          <PlusCircle className="w-4 h-4" />
-          Novo Modelo de Ficha
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setIsImportOpen(true)}
+            className="bg-surface-base hover:bg-surface-dim border border-border-subtle text-white px-4 py-2 rounded-md font-medium text-[13px] transition-colors flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Importar Modelo
+          </button>
+          <button 
+            onClick={handleCreateNew}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md font-medium text-[13px] transition-colors flex items-center gap-2"
+          >
+            <PlusCircle className="w-4 h-4" />
+            Novo Modelo
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -72,13 +173,90 @@ export function SistemasTab() {
           </div>
         ))}
       </div>
+
+      {isImportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface-base border border-border-subtle rounded-lg shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-border-subtle bg-surface-dim">
+              <h3 className="text-[14px] font-bold text-white flex items-center gap-2">
+                <Upload className="w-4 h-4 text-primary" /> 
+                Importar Modelo
+              </h3>
+              <button onClick={() => setIsImportOpen(false)} className="text-text-muted hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="flex border-b border-border-subtle bg-surface-dim">
+              <button 
+                onClick={() => { setImportTab('json'); setImportError(""); }} 
+                className={`flex-1 py-3 text-[13px] font-medium border-b-2 transition-colors ${importTab === 'json' ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-white'}`}
+              >
+                Importar JSON
+              </button>
+              <button 
+                onClick={() => { setImportTab('pdf'); setImportError(""); }}
+                className={`flex-1 py-3 text-[13px] font-medium border-b-2 transition-colors ${importTab === 'pdf' ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-white'}`}
+              >
+                Extrair de PDF
+              </button>
+            </div>
+
+            <div className="p-5 flex flex-col gap-4">
+              {importError && (
+                <div className="p-3 rounded bg-danger/10 border border-danger/20 text-danger text-[12px]">
+                  {importError}
+                </div>
+              )}
+
+              {importTab === 'json' && (
+                <>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[12px] font-medium text-text-muted">Cole o JSON do modelo abaixo:</label>
+                    <label className="text-[11px] text-primary hover:underline cursor-pointer">
+                      ou selecione um arquivo
+                      <input type="file" accept=".json" className="hidden" onChange={handleFileUploadJson} />
+                    </label>
+                  </div>
+                  <textarea 
+                    value={jsonInput} 
+                    onChange={e => setJsonInput(e.target.value)} 
+                    className="w-full h-48 bg-background border border-border-subtle rounded p-3 text-[12px] text-white font-mono focus:outline-none focus:border-primary resize-none"
+                    placeholder="{"
+                  />
+                  <div className="flex justify-end mt-2">
+                    <button onClick={handleImportJson} className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded text-[13px] font-medium transition-colors">
+                      Importar JSON
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {importTab === 'pdf' && (
+                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border-subtle rounded-lg bg-surface-dim text-center">
+                  <FileText className="w-12 h-12 text-text-muted mb-4" />
+                  <h4 className="text-[14px] font-medium text-white mb-2">Envie um PDF Preenchível (AcroForm)</h4>
+                  <p className="text-[12px] text-text-muted mb-6">Nós iremos extrair todos os campos do formulário para criar um modelo bruto, que você poderá organizar depois no Construtor.</p>
+                  
+                  <label className="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-lg text-[13px] font-medium transition-colors cursor-pointer inline-flex items-center gap-2 shadow-sm">
+                    <Upload className="w-4 h-4" /> Escolher PDF
+                    <input type="file" accept=".pdf" className="hidden" onChange={handleImportPdf} />
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
 
-function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack: () => void }) {
-  const [isEditing, setIsEditing] = useState(false);
+function SheetTemplateView({ templateId, onBack, forceEdit = false }: { templateId: string, onBack: () => void, forceEdit?: boolean }) {
+  const [isEditing, setIsEditing] = useState(forceEdit);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [template, setTemplate] = useState<SheetTemplate | null>(null);
   const [backupTemplate, setBackupTemplate] = useState<SheetTemplate | null>(null);
   
@@ -94,6 +272,14 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
       if (t) setTemplate(t);
     });
   }, [templateId]);
+
+  useEffect(() => {
+    if (template && forceEdit && !isEditing) {
+      if (!backupTemplate) setBackupTemplate(JSON.parse(JSON.stringify(template)));
+      setIsEditing(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template, forceEdit]);
 
   if (!template) return <div>Carregando...</div>;
 
@@ -267,12 +453,20 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
               </button>
             </>
           ) : (
-            <button 
-              onClick={startEditing}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded text-[12px] font-medium transition-colors flex items-center gap-2"
-            >
-              <Edit2 className="w-4 h-4" /> Editar Estrutura
-            </button>
+            <>
+              <button 
+                onClick={() => setIsExportOpen(true)}
+                className="bg-transparent border border-border-subtle hover:bg-surface-dim text-text-muted hover:text-white px-4 py-2 rounded text-[12px] font-medium transition-colors flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" /> Exportar JSON
+              </button>
+              <button 
+                onClick={startEditing}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded text-[12px] font-medium transition-colors flex items-center gap-2"
+              >
+                <Edit2 className="w-4 h-4" /> Editar Estrutura
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -387,9 +581,11 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
                               <input 
                                 type="text" 
                                 value={field.id} 
+                                readOnly={field.readonlyId}
                                 onChange={e => handleUpdateField(tIdx, gIdx, fIdx, {...field, id: e.target.value.replace(/[^a-zA-Z0-9_]/g, '')})} 
-                                className="bg-background border border-border-subtle rounded px-2 py-1 text-[12px] text-white w-16 shrink-0" 
+                                className={`border border-border-subtle rounded px-2 py-1 text-[12px] text-white w-16 shrink-0 ${field.readonlyId ? 'bg-surface-dim opacity-70 cursor-not-allowed' : 'bg-background'}`} 
                                 placeholder="ID"
+                                title={field.readonlyId ? "ID bloqueado por importação" : "ID do campo"}
                               />
                             </div>
                             {field.type === "calculated" && (
@@ -488,6 +684,48 @@ function SheetTemplateView({ templateId, onBack }: { templateId: string, onBack:
               <button onClick={() => setIsHelpOpen(false)} className="bg-secondary hover:bg-secondary/90 text-background px-4 py-2 rounded text-[13px] font-medium transition-colors">
                 Entendi
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isExportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface-base border border-border-subtle rounded-lg shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[80vh]">
+            <div className="flex items-center justify-between p-4 border-b border-border-subtle bg-surface-dim">
+              <h3 className="text-[14px] font-bold text-white flex items-center gap-2">
+                <Download className="w-4 h-4 text-primary" /> 
+                Exportar Modelo de Ficha
+              </h3>
+              <button onClick={() => setIsExportOpen(false)} className="text-text-muted hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-0 overflow-y-auto bg-[#0d1117]">
+              <pre className="text-[12px] text-[#c9d1d9] p-4 font-mono w-full">
+                {JSON.stringify(template, null, 2)}
+              </pre>
+            </div>
+            <div className="p-4 border-t border-border-subtle bg-surface-dim flex justify-between items-center">
+              <span className="text-[12px] text-text-muted">Você pode compartilhar este JSON para que outros jogadores importem o modelo.</span>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setIsExportOpen(false)} 
+                  className="bg-transparent border border-border-subtle hover:bg-surface-base text-white px-4 py-2 rounded text-[13px] font-medium transition-colors"
+                >
+                  Fechar
+                </button>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(template, null, 2));
+                    setIsCopied(true);
+                    setTimeout(() => setIsCopied(false), 2000);
+                  }} 
+                  className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded text-[13px] font-medium transition-colors flex items-center gap-2"
+                >
+                  {isCopied ? <><Check className="w-4 h-4" /> Copiado!</> : <><Copy className="w-4 h-4" /> Copiar JSON</>}
+                </button>
+              </div>
             </div>
           </div>
         </div>

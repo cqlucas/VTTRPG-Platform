@@ -116,6 +116,7 @@ export interface SheetField {
   label: string; // Display label
   type: FieldType;
   formula?: string; // Expression for calculated fields
+  readonlyId?: boolean; // If true, the ID cannot be edited (used for PDF imports)
 }
 
 export interface SheetGroup {
