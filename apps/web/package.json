@@ -10,9 +10,15 @@
     "clean": "rimraf .next"
   },
   "dependencies": {
+    "@questdreamer/local-db": "workspace:*",
     "@questdreamer/types": "workspace:*",
     "@questdreamer/ui": "workspace:*",
     "@questdreamer/webrtc": "workspace:*",
+    "@tiptap/extension-color": "^3.31.4",
+    "@tiptap/extension-text-style": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/react": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
     "clsx": "^2.1.1",
     "framer-motion": "^13.5.0",
     "lucide-react": "^1.49.0",
