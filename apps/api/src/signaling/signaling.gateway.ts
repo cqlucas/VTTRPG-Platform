@@ -21,6 +21,7 @@ interface RoomPeer {
   peerId: string;
   displayName: string;
   isHost: boolean;
+  avatarUrl?: string;
 }
 
 @WebSocketGateway({
@@ -62,9 +63,9 @@ export class SignalingGateway
   handleJoinRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    payload: { campaignId: string; peerId: string; displayName: string; isHost: boolean },
+    payload: { campaignId: string; peerId: string; displayName: string; isHost: boolean; avatarUrl?: string },
   ) {
-    const { campaignId, displayName, isHost } = payload;
+    const { campaignId, displayName, isHost, avatarUrl } = payload;
     // The socket id is the authoritative peer id (never trust the client payload)
     const peerId = client.id;
     console.log(`📥 ${displayName} (${peerId}) joining room ${campaignId} [Host: ${isHost}]`);
@@ -96,17 +97,17 @@ export class SignalingGateway
       }
     }
 
-    room.set(peerId, { socketId: client.id, peerId, displayName, isHost });
+    room.set(peerId, { socketId: client.id, peerId, displayName, isHost, avatarUrl });
 
     this.socketToPeer.set(client.id, { campaignId, peerId });
 
     // Notify existing peers about the new joiner
-    client.to(campaignId).emit("room:peer-joined", { peerId, displayName, isHost });
+    client.to(campaignId).emit("room:peer-joined", { peerId, displayName, isHost, avatarUrl });
 
     // Send the list of existing peers to the new joiner
     const existingPeers = Array.from(room.values())
       .filter((p) => p.peerId !== peerId)
-      .map((p) => ({ peerId: p.peerId, displayName: p.displayName, isHost: p.isHost }));
+      .map((p) => ({ peerId: p.peerId, displayName: p.displayName, isHost: p.isHost, avatarUrl: p.avatarUrl }));
 
     client.emit("room:peers-list", { peers: existingPeers });
   }

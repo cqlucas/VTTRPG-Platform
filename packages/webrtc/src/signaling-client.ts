@@ -64,13 +64,14 @@ export class SignalingClient {
     });
   }
 
-  joinRoom(displayName: string, isHost: boolean) {
+  joinRoom(displayName: string, isHost: boolean, avatarUrl?: string) {
     if (!this.peerId) return;
     this.socket.emit("room:join", { 
       campaignId: this.config.campaignId,
       peerId: this.peerId,
       displayName,
-      isHost
+      isHost,
+      avatarUrl
     });
   }
 
@@ -78,7 +79,7 @@ export class SignalingClient {
     this.socket.emit("room:leave", { campaignId: this.config.campaignId });
   }
 
-  onPeerJoined(cb: (payload: { peerId: string; displayName: string; isHost: boolean }) => void) {
+  onPeerJoined(cb: (payload: { peerId: string; displayName: string; isHost: boolean; avatarUrl?: string }) => void) {
     this.socket.on("room:peer-joined", cb);
   }
 
@@ -86,7 +87,7 @@ export class SignalingClient {
     this.socket.on("room:peer-left", cb);
   }
 
-  onPeersList(cb: (payload: { peers: Array<{ peerId: string; displayName: string; isHost: boolean }> }) => void) {
+  onPeersList(cb: (payload: { peers: Array<{ peerId: string; displayName: string; isHost: boolean; avatarUrl?: string }> }) => void) {
     this.socket.on("room:peers-list", cb);
   }
 

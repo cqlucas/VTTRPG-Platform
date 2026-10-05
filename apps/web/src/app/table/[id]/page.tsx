@@ -16,6 +16,7 @@ interface PeerState {
   displayName: string;
   isHost: boolean;
   ping: number;
+  avatarUrl?: string;
 }
 
 interface ChatLogMessage {
@@ -142,7 +143,7 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
             pcManagerRef.current = newPcm;
 
             // Announce presence (after PCM is ready to handle the peers-list reply)
-            client.joinRoom(userDisplayName, isHost);
+            client.joinRoom(userDisplayName, isHost, user.avatarUrl);
           }
         });
         sigClient = client;
@@ -377,8 +378,12 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
             {user && (
               <div className="flex items-center justify-between p-2 rounded bg-surface-bright border border-border-subtle group">
                 <div className="flex items-center gap-3">
-                  <div className={`w-6 h-6 rounded flex items-center justify-center border ${(campaign?.ownerId === user.id) ? 'border-primary/50 text-primary bg-primary/10' : 'border-secondary/50 text-secondary bg-secondary/10'}`}>
-                    {(campaign?.ownerId === user.id) ? <Shield className="w-3 h-3" /> : <Hexagon className="w-3 h-3" />}
+                  <div className={`w-6 h-6 rounded flex items-center justify-center border overflow-hidden ${(campaign?.ownerId === user.id) ? 'border-primary/50 text-primary bg-primary/10' : 'border-secondary/50 text-secondary bg-secondary/10'}`}>
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={user.displayName} className="w-full h-full object-cover" />
+                    ) : (
+                      (campaign?.ownerId === user.id) ? <Shield className="w-3 h-3" /> : <Hexagon className="w-3 h-3" />
+                    )}
                   </div>
                   <div>
                     <div className="font-medium text-white">{user.displayName} (You)</div>
@@ -391,8 +396,12 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
             {peers.map((p) => (
               <div key={p.peerId} className="flex items-center justify-between p-2 rounded hover:bg-surface-bright transition-colors cursor-pointer border border-transparent hover:border-border-subtle group relative">
                 <div className="flex items-center gap-3">
-                  <div className={`w-6 h-6 rounded flex items-center justify-center border ${p.isHost ? 'border-primary/50 text-primary bg-primary/10' : 'border-secondary/50 text-secondary bg-secondary/10'}`}>
-                    {p.isHost ? <Shield className="w-3 h-3" /> : <Hexagon className="w-3 h-3" />}
+                  <div className={`w-6 h-6 rounded flex items-center justify-center border overflow-hidden ${p.isHost ? 'border-primary/50 text-primary bg-primary/10' : 'border-secondary/50 text-secondary bg-secondary/10'}`}>
+                    {p.avatarUrl ? (
+                      <img src={p.avatarUrl} alt={p.displayName} className="w-full h-full object-cover" />
+                    ) : (
+                      p.isHost ? <Shield className="w-3 h-3" /> : <Hexagon className="w-3 h-3" />
+                    )}
                   </div>
                   <div>
                     <div className="font-medium text-white group-hover:text-secondary transition-colors truncate max-w-[100px]">{p.displayName}</div>

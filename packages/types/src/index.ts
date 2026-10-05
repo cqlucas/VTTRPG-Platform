@@ -158,9 +158,9 @@ export interface ServerToClientEvents {
   "signal:offer": (payload: SignalOffer) => void;
   "signal:answer": (payload: SignalAnswer) => void;
   "signal:ice-candidate": (payload: SignalIceCandidate) => void;
-  "room:peer-joined": (payload: { peerId: string; displayName: string }) => void;
+  "room:peer-joined": (payload: { peerId: string; displayName: string; isHost?: boolean; avatarUrl?: string }) => void;
   "room:peer-left": (payload: { peerId: string }) => void;
-  "room:peers-list": (payload: { peers: Array<{ peerId: string; displayName: string }> }) => void;
+  "room:peers-list": (payload: { peers: Array<{ peerId: string; displayName: string; isHost?: boolean; avatarUrl?: string }> }) => void;
   "error": (payload: { message: string }) => void;
 }
 
@@ -168,6 +168,6 @@ export interface ClientToServerEvents {
   "signal:offer": (payload: SignalOffer) => void;
   "signal:answer": (payload: SignalAnswer) => void;
   "signal:ice-candidate": (payload: SignalIceCandidate) => void;
-  "room:join": (payload: { campaignId: string; peerId: string; displayName: string }) => void;
+  "room:join": (payload: { campaignId: string; peerId: string; displayName: string; isHost?: boolean; avatarUrl?: string }) => void;
   "room:leave": (payload: { campaignId: string }) => void;
 }
