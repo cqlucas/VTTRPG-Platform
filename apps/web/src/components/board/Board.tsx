@@ -5,15 +5,17 @@ import { Ruler, PlusSquare, Eraser } from "lucide-react";
 
 interface BoardProps {
   isDM: boolean;
+  tiles: Record<string, { image: string }>;
+  onTilesChange: (newTiles: Record<string, { image: string }>) => void;
+  onPointerChange: (start: { x: number; y: number } | null, current: { x: number; y: number } | null) => void;
+  peerPointers: Record<string, { start: { x: number; y: number } | null; current: { x: number; y: number } | null }>;
 }
 
 const TILE_SIZE = 50;
 const TILE_IMAGE_PATH = "/images/genericTile.png";
 
-export function Board({ isDM }: BoardProps) {
+export function Board({ isDM, tiles, onTilesChange, onPointerChange, peerPointers }: BoardProps) {
   const [activeTool, setActiveTool] = useState<"measure" | "add" | "erase" | null>(null);
-  
-  const [tiles, setTiles] = useState<Record<string, { image: string }>>({});
   
   // Measure state
   const [measureStart, setMeasureStart] = useState<{ x: number; y: number } | null>(null);
@@ -46,21 +48,17 @@ export function Board({ isDM }: BoardProps) {
 
     if (activeTool === "add" && isDM) {
       const newTiles = { ...tiles, [key]: { image: TILE_IMAGE_PATH } };
-      setTiles(newTiles);
-      syncGridToPeers(newTiles);
-      saveGridToCache(newTiles);
+      onTilesChange(newTiles);
     } else if (activeTool === "erase" && isDM) {
       if (tiles[key]) {
         const newTiles = { ...tiles };
         delete newTiles[key];
-        setTiles(newTiles);
-        syncGridToPeers(newTiles);
-        saveGridToCache(newTiles);
+        onTilesChange(newTiles);
       }
     } else if (activeTool === "measure") {
       setMeasureStart(coords);
       setMeasureCurrent(coords);
-      broadcastPointer(coords, coords);
+      onPointerChange(coords, coords);
     }
   };
 
@@ -68,7 +66,7 @@ export function Board({ isDM }: BoardProps) {
     if (activeTool === "measure" && measureStart) {
       const coords = getGridCoords(e);
       setMeasureCurrent(coords);
-      broadcastPointer(measureStart, coords);
+      onPointerChange(measureStart, coords);
     }
   };
 
@@ -76,7 +74,7 @@ export function Board({ isDM }: BoardProps) {
     if (activeTool === "measure") {
       setMeasureStart(null);
       setMeasureCurrent(null);
-      broadcastPointer(null, null);
+      onPointerChange(null, null);
     }
   };
 
@@ -84,7 +82,7 @@ export function Board({ isDM }: BoardProps) {
     if (activeTool === "measure") {
       setMeasureStart(null);
       setMeasureCurrent(null);
-      broadcastPointer(null, null);
+      onPointerChange(null, null);
     }
   };
 
@@ -207,6 +205,58 @@ export function Board({ isDM }: BoardProps) {
             </text>
           </svg>
         )}
+
+        {/* Peer Pointers Overlay */}
+        {Object.entries(peerPointers).map(([peerId, pointer]) => {
+          if (!pointer.start || !pointer.current) return null;
+          const dx = pointer.current.x - pointer.start.x;
+          const dy = pointer.current.y - pointer.start.y;
+          const distanceTiles = Math.sqrt(dx * dx + dy * dy);
+          const distanceFt = Math.round(distanceTiles) * 5;
+          const text = `${distanceFt} ft`;
+
+          const pCoords = {
+            x1: pointer.start.x * TILE_SIZE + TILE_SIZE / 2,
+            y1: pointer.start.y * TILE_SIZE + TILE_SIZE / 2,
+            x2: pointer.current.x * TILE_SIZE + TILE_SIZE / 2,
+            y2: pointer.current.y * TILE_SIZE + TILE_SIZE / 2,
+          };
+
+          return (
+            <svg key={peerId} className="absolute inset-0 w-full h-full pointer-events-none z-10" style={{ overflow: "visible" }}>
+              <line 
+                x1={pCoords.x1} 
+                y1={pCoords.y1} 
+                x2={pCoords.x2} 
+                y2={pCoords.y2} 
+                stroke="var(--color-secondary, #14b8a6)" 
+                strokeWidth="2"
+                strokeDasharray="4,4"
+                opacity="0.7"
+              />
+              <rect 
+                x={(pCoords.x1 + pCoords.x2) / 2 - 28}
+                y={(pCoords.y1 + pCoords.y2) / 2 - 12}
+                width="56"
+                height="24"
+                rx="4"
+                fill="#0f172a"
+                stroke="var(--color-secondary, #14b8a6)"
+                strokeWidth="1"
+              />
+              <text 
+                x={(pCoords.x1 + pCoords.x2) / 2} 
+                y={(pCoords.y1 + pCoords.y2) / 2 + 4} 
+                fill="white" 
+                fontSize="12" 
+                fontFamily="monospace"
+                textAnchor="middle"
+              >
+                {text}
+              </text>
+            </svg>
+          );
+        })}
       </div>
     </div>
   );

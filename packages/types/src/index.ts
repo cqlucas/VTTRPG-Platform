@@ -89,7 +89,9 @@ export type DataChannelMessage =
   | { type: "state-sync"; payload: VttState }
   | { type: "entity_update"; payload: { entityType: "character" | "token" | "lore"; entityId: string; changes: any; timestamp: number } }
   | { type: "request_snapshot"; payload: Record<string, never> }
-  | { type: "state_snapshot"; payload: any };
+  | { type: "state_snapshot"; payload: any }
+  | { type: "board-sync"; payload: Record<string, { image: string }> }
+  | { type: "board-pointer"; payload: { start: { x: number; y: number } | null; current: { x: number; y: number } | null } };
 
 // ──────────────────────────────────────────────
 // VTT State (synchronized across peers)

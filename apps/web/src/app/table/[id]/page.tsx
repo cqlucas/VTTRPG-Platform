@@ -59,6 +59,10 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
   const [isIdCopied, setIsIdCopied] = useState(false);
 
+  // Board Sync States
+  const [tiles, setTiles] = useState<Record<string, { image: string }>>({});
+  const [peerPointers, setPeerPointers] = useState<Record<string, { start: { x: number; y: number } | null; current: { x: number; y: number } | null }>>({});
+
   const handleCopyId = () => {
     navigator.clipboard.writeText(campaignId);
     setIsIdCopied(true);
@@ -291,8 +295,24 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
           roll,
         }];
       });
+    } else if (message.type === "board-sync") {
+      setTiles(message.payload);
+      // If we are the host, forward the new state to everyone else
+      const pcm = pcManagerRef.current;
+      if (pcm && campaign?.ownerId === user?.id) {
+        pcm.broadcast(message, fromPeerId);
+      }
+    } else if (message.type === "board-pointer") {
+      setPeerPointers(prev => ({
+        ...prev,
+        [fromPeerId]: message.payload
+      }));
+      // Host forwards pointer too
+      const pcm = pcManagerRef.current;
+      if (pcm && campaign?.ownerId === user?.id) {
+        pcm.broadcast(message, fromPeerId);
+      }
     }
-    // More message handlers will go here (tokens, etc)
   };
 
   /** Sends a message over P2P according to our role (host broadcasts, player → host) */
@@ -308,6 +328,15 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
       pcm.sendToHost(wrapper);
     }
   };
+
+  const handleTilesChange = useCallback((newTiles: Record<string, { image: string }>) => {
+    setTiles(newTiles);
+    sendP2P({ type: "board-sync", payload: newTiles });
+  }, [campaign?.ownerId, user?.id]);
+
+  const handlePointerChange = useCallback((start: { x: number; y: number } | null, current: { x: number; y: number } | null) => {
+    sendP2P({ type: "board-pointer", payload: { start, current } });
+  }, [campaign?.ownerId, user?.id]);
 
   const performRoll = (expr: ParsedDiceExpression) => {
     if (!user) return;
@@ -584,7 +613,13 @@ export default function TablePage({ params }: { params: Promise<{ id: string }> 
 
       {/* Center Canvas Area (Layer 0 & 1) */}
       <main className="flex-1 relative bg-background z-0">
-        <Board isDM={isDM} />
+        <Board 
+          isDM={isDM} 
+          tiles={tiles}
+          onTilesChange={handleTilesChange}
+          onPointerChange={handlePointerChange}
+          peerPointers={peerPointers}
+        />
       </main>
 
       {/* Right Sidebar - Chat & Log (Layer 2) */}
